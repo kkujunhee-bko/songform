@@ -1,0 +1,52 @@
+name: Deploy to Server
+
+# GitHub Actions 탭에서 "Run workflow" 버튼으로 수동 배포
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '배포 환경'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+
+jobs:
+  deploy:
+    name: Deploy to Ubuntu Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            set -e
+            echo "=== [1/5] 저장소 최신화 ==="
+            cd ${{ secrets.SERVER_PATH }}
+            git pull origin main
+
+            echo "=== [2/5] 의존성 설치 ==="
+            npm install --workspace=server --omit=dev
+            npm install --workspace=client
+
+            echo "=== [3/5] 클라이언트 빌드 ==="
+            npm run build --workspace=client
+
+            echo "=== [4/5] DB 마이그레이션 (신규 마이그레이션만 적용) ==="
+            npm run db:migrate
+
+            echo "=== [5/5] PM2 재시작 ==="
+            pm2 reload songform-server --update-env
+            pm2 save
+
+            echo "=== 배포 완료 ==="
+            pm2 list

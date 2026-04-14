@@ -1,0 +1,154 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+  }
+  /* 다크 모드 (기본) */
+  html.dark body {
+    @apply bg-gray-950 text-gray-100;
+  }
+  /* 라이트 모드 */
+  html:not(.dark) body {
+    background-color: #F1F5F9;
+    color: #1E293B;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-150 cursor-pointer select-none;
+  }
+  .btn-primary {
+    @apply bg-blue-600 hover:bg-blue-500 text-white;
+  }
+  .btn-secondary {
+    @apply bg-gray-700 hover:bg-gray-600 text-gray-100
+           dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-100;
+  }
+  .btn-danger {
+    @apply bg-red-700 hover:bg-red-600 text-white;
+  }
+  .btn-ghost {
+    @apply bg-transparent text-gray-400 hover:text-gray-100 hover:bg-gray-800
+           dark:hover:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-100;
+  }
+  .input {
+    @apply w-full px-3 py-2 rounded-lg text-sm
+           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+           transition-all duration-150
+           bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500
+           dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100 dark:placeholder-gray-500;
+  }
+  .select {
+    @apply w-full px-3 py-2 rounded-lg text-sm cursor-pointer
+           focus:outline-none focus:ring-2 focus:ring-blue-500
+           bg-gray-800 border border-gray-700 text-gray-100
+           dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100;
+  }
+  .card {
+    @apply rounded-xl p-4
+           bg-gray-900 border border-gray-800
+           dark:bg-gray-900 dark:border-gray-800;
+  }
+  .label {
+    @apply block text-xs font-medium mb-1
+           text-gray-400 dark:text-gray-400;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────
+   라이트 모드: 다크 Tailwind 클래스 재매핑 (JSX 변경 없이)
+   ──────────────────────────────────────────────────────────── */
+
+/* 배경색 */
+html:not(.dark) .bg-gray-950  { background-color: #F1F5F9; }
+html:not(.dark) .bg-gray-900  { background-color: #FFFFFF; }
+html:not(.dark) .bg-gray-800  { background-color: #F1F5F9; }
+html:not(.dark) .bg-gray-700  { background-color: #E2E8F0; }
+html:not(.dark) .bg-gray-600  { background-color: #CBD5E1; }
+
+/* 컴포넌트 클래스 라이트 모드 재정의 */
+html:not(.dark) .btn-secondary {
+  background-color: #E2E8F0;
+  color: #334155;
+}
+html:not(.dark) .btn-secondary:hover {
+  background-color: #CBD5E1;
+  color: #1E293B;
+}
+html:not(.dark) .btn-ghost {
+  color: #64748B;
+}
+html:not(.dark) .btn-ghost:hover {
+  background-color: #E2E8F0;
+  color: #1E293B;
+}
+html:not(.dark) .input {
+  background-color: #FFFFFF;
+  border-color: #CBD5E1;
+  color: #1E293B;
+}
+html:not(.dark) .input::placeholder { color: #94A3B8; }
+html:not(.dark) .select {
+  background-color: #FFFFFF;
+  border-color: #CBD5E1;
+  color: #1E293B;
+}
+html:not(.dark) .card {
+  background-color: #FFFFFF;
+  border-color: #E2E8F0;
+}
+html:not(.dark) .label { color: #64748B; }
+
+/* 텍스트색 */
+html:not(.dark) .text-gray-100 { color: #1E293B; }
+html:not(.dark) .text-gray-200 { color: #334155; }
+html:not(.dark) .text-gray-300 { color: #475569; }
+html:not(.dark) .text-gray-400 { color: #64748B; }
+html:not(.dark) .text-gray-500 { color: #94A3B8; }
+html:not(.dark) .text-gray-600 { color: #94A3B8; }
+html:not(.dark) .text-white    { color: #0F172A; }
+
+/* 흰 텍스트가 색상 버튼 위에 있는 경우 보호 (blue/red/green 버튼) */
+html:not(.dark) .bg-blue-600 .text-white,
+html:not(.dark) .bg-blue-600.text-white,
+html:not(.dark) .btn-primary,
+html:not(.dark) .btn-danger { color: #FFFFFF; }
+
+/* 테두리색 */
+html:not(.dark) .border-gray-800 { border-color: #E2E8F0; }
+html:not(.dark) .border-gray-700 { border-color: #CBD5E1; }
+html:not(.dark) .border-gray-600 { border-color: #94A3B8; }
+html:not(.dark) .border-dashed.border-gray-700 { border-color: #CBD5E1; }
+
+/* 호버 상태 */
+html:not(.dark) .hover\:bg-gray-800:hover { background-color: #E2E8F0; }
+html:not(.dark) .hover\:bg-gray-600:hover { background-color: #CBD5E1; }
+html:not(.dark) .hover\:text-gray-100:hover { color: #1E293B; }
+html:not(.dark) .hover\:text-gray-300:hover { color: #475569; }
+html:not(.dark) .hover\:border-gray-600:hover { border-color: #94A3B8; }
+
+/* 사이드바 */
+html:not(.dark) aside.bg-gray-900 { background-color: #FFFFFF; }
+
+/* 스크롤바 */
+html:not(.dark) ::-webkit-scrollbar-thumb { background: #CBD5E1; }
+html:not(.dark) ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* 요소 팔레트 / 송폼 흐름 순서 — 라이트 모드에서 배경 제거 */
+html:not(.dark) .form-inner-section {
+  background-color: transparent;
+  border-color: #E2E8F0;
+}
+
+/* ────────────────────────────────────────────────────────────
+   공통 스크롤바 스타일
+   ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4B5563; }
