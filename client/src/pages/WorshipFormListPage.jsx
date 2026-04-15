@@ -92,18 +92,18 @@ export default function WorshipFormListPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
       {/* 헤더 */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">예배 송폼 목록</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">예배 송폼 목록</h1>
           <p className="text-sm text-gray-500 mt-1">
             총 {forms.length}개
             {searchQuery && ` · 검색결과 ${filteredForms.length}개`}
           </p>
         </div>
         {perm.can_create && (
-          <Link to="/forms/new" className="btn btn-primary">
+          <Link to="/forms/new" className="btn btn-primary self-start sm:self-auto">
             <Plus size={16} />
             새 송폼 만들기
           </Link>
@@ -157,9 +157,9 @@ export default function WorshipFormListPage() {
               className="card hover:border-gray-700 transition-colors cursor-pointer group"
               onClick={() => navigate(`/forms/${form.id}/edit`)}
             >
-              <div className="flex items-center gap-4">
+              <div className="flex items-start gap-3 sm:gap-4">
                 {/* 날짜 영역 */}
-                <div className="w-20 text-center flex-shrink-0">
+                <div className="w-16 sm:w-20 text-center flex-shrink-0 pt-0.5">
                   <div className="text-lg font-bold text-blue-400 leading-tight">
                     {parseDateStr(form.worship_date).getMonth() + 1}월 {parseDateStr(form.worship_date).getDate()}일
                   </div>
@@ -205,8 +205,8 @@ export default function WorshipFormListPage() {
                   )}
                 </div>
 
-                {/* 액션 버튼 */}
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                {/* 액션 버튼: 모바일은 항상 표시, 태블릿/PC는 hover 시 표시 */}
+                <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
                   <button
                     className="btn btn-ghost p-2"
                     onClick={(e) => handleExport(form.id, e)}
