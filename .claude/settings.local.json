@@ -6,7 +6,12 @@
       "Bash(findstr pptx:*)",
       "Bash(dir \"D:\\\\Project\\\\SongForm\\\\server\\\\node_modules\\\\pptxgenjs\" /b)",
       "Bash(node src/db/migrate.js)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(grep -o \"\\\\.-translate-x-full\\\\|\\\\.translate-x-0\\\\|md\\\\\\\\\\\\\\\\:translate-x-0\\\\|md\\\\\\\\\\\\\\\\:ml-14\\\\|lg\\\\\\\\\\\\\\\\:ml-56\\\\|md\\\\\\\\\\\\\\\\:w-14\\\\|md\\\\\\\\\\\\\\\\:hidden\" D:/Project/SongForm/client/dist/assets/index-DpjI4P6G.css)",
+      "Bash(grep -o \"md\\\\\\\\\\\\\\\\:translate[^;]*;\" D:/Project/SongForm/client/dist/assets/index-DpjI4P6G.css)",
+      "Bash(grep -o \"md\\\\\\\\\\\\\\\\:hidden[^;]*;\" D:/Project/SongForm/client/dist/assets/index-DpjI4P6G.css)",
+      "Bash(grep -o \"md\\\\\\\\\\\\\\\\:w-14[^;]*;\" D:/Project/SongForm/client/dist/assets/index-DpjI4P6G.css)",
+      "Bash(python3 -c ':*)"
     ]
   }
 }

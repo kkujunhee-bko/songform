@@ -157,10 +157,11 @@ export default function WorshipFormListPage() {
               className="card hover:border-gray-700 transition-colors cursor-pointer group"
               onClick={() => navigate(`/forms/${form.id}/edit`)}
             >
-              <div className="flex items-start gap-3 sm:gap-4">
+              {/* 메인 행: 날짜 + 구분선 + 내용 + (sm+ 액션버튼) */}
+              <div className="flex items-start gap-3">
                 {/* 날짜 영역 */}
-                <div className="w-16 sm:w-20 text-center flex-shrink-0 pt-0.5">
-                  <div className="text-lg font-bold text-blue-400 leading-tight">
+                <div className="w-14 sm:w-20 text-center flex-shrink-0 pt-0.5">
+                  <div className="text-base sm:text-lg font-bold text-blue-400 leading-tight">
                     {parseDateStr(form.worship_date).getMonth() + 1}월 {parseDateStr(form.worship_date).getDate()}일
                   </div>
                   <div className="text-xs text-gray-500 leading-snug">
@@ -174,28 +175,28 @@ export default function WorshipFormListPage() {
                 {/* 내용 영역 */}
                 <div className="flex-1 min-w-0">
                   {/* 카테고리 + 곡 수 */}
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="font-semibold text-white">{form.category_name}</span>
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="font-semibold text-white text-sm">{form.category_name}</span>
                     <span className="flex items-center gap-1 text-xs text-gray-500">
                       <Music size={11} />
                       {form.song_count}곡
                     </span>
                     {form.notes && (
-                      <span className="text-xs text-gray-600 truncate max-w-xs">{form.notes}</span>
+                      <span className="text-xs text-gray-600 truncate hidden sm:inline max-w-xs">{form.notes}</span>
                     )}
                   </div>
                   {/* 인도자 */}
                   {Array.isArray(form.leader_names) && form.leader_names.length > 0 && (
                     <div className="flex items-center gap-1.5 mb-1">
                       <User size={10} className="text-gray-600 flex-shrink-0" />
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-400 truncate">
                         {form.leader_names.join(' · ')}
                       </span>
                     </div>
                   )}
                   {/* 곡 제목 목록 */}
                   {Array.isArray(form.song_titles) && form.song_titles.length > 0 && (
-                    <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                    <div className="flex flex-wrap gap-x-2 gap-y-0.5">
                       {form.song_titles.map((title, idx) => (
                         <span key={idx} className="text-xs text-gray-500">
                           <span className="text-gray-600 mr-0.5">{idx + 1}.</span>{title}
@@ -205,8 +206,8 @@ export default function WorshipFormListPage() {
                   )}
                 </div>
 
-                {/* 액션 버튼: 모바일은 항상 표시, 태블릿/PC는 hover 시 표시 */}
-                <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
+                {/* 액션 버튼: sm+ hover 시 표시 */}
+                <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                   <button
                     className="btn btn-ghost p-2"
                     onClick={(e) => handleExport(form.id, e)}
@@ -233,6 +234,35 @@ export default function WorshipFormListPage() {
                     </button>
                   )}
                 </div>
+              </div>
+
+              {/* 모바일 전용 액션 버튼 행 */}
+              <div className="flex sm:hidden justify-end gap-1 mt-2 pt-2 border-t border-gray-800">
+                <button
+                  className="btn btn-ghost p-2"
+                  onClick={(e) => handleExport(form.id, e)}
+                  title="PPT 내보내기"
+                >
+                  <FileDown size={15} />
+                </button>
+                {perm.can_edit && (
+                  <button
+                    className="btn btn-ghost p-2"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/forms/${form.id}/edit`) }}
+                    title="편집"
+                  >
+                    <Pencil size={15} />
+                  </button>
+                )}
+                {perm.can_delete && (
+                  <button
+                    className="btn btn-ghost p-2 hover:text-red-400"
+                    onClick={(e) => handleDelete(form.id, e)}
+                    title="삭제"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
               </div>
             </div>
           ))}

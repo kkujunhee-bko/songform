@@ -39,7 +39,7 @@ export default function LoginPage() {
             <Music size={28} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">SongForm</h1>
-          <p className="text-sm text-gray-500 mt-1">예배 송폼 관리 시스템</p>
+          <p className="text-sm text-gray-500 mt-1">엘리아다 예배 송폼 관리 시스템</p>
         </div>
 
         {/* 로그인 폼 */}

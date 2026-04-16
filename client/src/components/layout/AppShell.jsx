@@ -7,7 +7,7 @@ export default function AppShell() {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-950">
+    <div className="h-screen overflow-hidden bg-gray-950">
       {/* 모바일 오버레이 배경 */}
       {mobileOpen && (
         <div
@@ -16,10 +16,15 @@ export default function AppShell() {
         />
       )}
 
+      {/* 사이드바: 항상 fixed - 레이아웃 흐름에서 제외 */}
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* 모바일 상단 바 */}
+      {/* 메인 영역: 사이드바 너비만큼 margin-left로 공간 확보
+          모바일(<md): ml-0 (사이드바 오버레이라 공간 불필요)
+          태블릿(md~lg): ml-14 (아이콘 사이드바 w-14 = 3.5rem)
+          PC(lg+): ml-56 (풀 사이드바 w-56 = 14rem) */}
+      <div className="h-full flex flex-col md:ml-14 lg:ml-56">
+        {/* 모바일 전용 상단 바 */}
         <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-gray-900 border-b border-gray-800 flex-shrink-0">
           <button
             onClick={() => setMobileOpen(true)}

@@ -19,11 +19,10 @@ export default function Sidebar({ mobileOpen, onClose }) {
   }
 
   const handleNavClick = () => {
-    // 모바일에서 메뉴 클릭 시 드로어 닫기
     if (onClose) onClose()
   }
 
-  // 태블릿(md~lg): 아이콘 중앙 정렬, PC(lg+): 아이콘+텍스트 좌측 정렬
+  // 태블릿(md~lg): 아이콘 중앙 정렬  /  PC(lg+): 아이콘+텍스트 좌측 정렬
   const navCls = (isActive) =>
     `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors
     md:justify-center md:px-2 lg:justify-start lg:px-3 ${
@@ -38,18 +37,24 @@ export default function Sidebar({ mobileOpen, onClose }) {
   })
 
   return (
+    /*
+      항상 fixed 포지션:
+        모바일(<md) : 기본 -translate-x-full(숨김), mobileOpen 시 translate-x-0(슬라이드 인)
+        태블릿(md+) : md:translate-x-0 으로 항상 보임, 너비 w-14 (아이콘만)
+        PC(lg+)     : lg:w-56 으로 너비 확장 (아이콘+텍스트)
+    */
     <aside
       className={`
-        flex-shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col
-        fixed inset-y-0 left-0 z-30 w-56
-        transition-transform duration-200 ease-in-out
-        md:relative md:inset-auto md:z-auto md:translate-x-0 md:w-14
-        lg:w-56
+        fixed inset-y-0 left-0 z-30
+        w-56 md:w-14 lg:w-56
+        bg-gray-900 border-r border-gray-800 flex flex-col
+        transition-transform duration-300 ease-in-out
+        md:translate-x-0
         ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
       `}
     >
       {/* 로고 */}
-      <div className="px-4 py-5 border-b border-gray-800 flex-shrink-0">
+      <div className="px-4 py-5 border-b border-gray-800 flex-shrink-0 relative">
         <div className="flex items-center gap-2 md:justify-center lg:justify-start">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <Music size={16} className="text-white" />

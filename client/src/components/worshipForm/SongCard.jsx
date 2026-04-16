@@ -71,7 +71,7 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove }
       className="card border-gray-800"
     >
       {/* 카드 헤더 */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {/* 드래그 핸들 */}
         <div
           className="cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 flex-shrink-0"
