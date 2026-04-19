@@ -35,6 +35,13 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
+// 프로덕션: 빌드된 React 앱 서빙
+if (process.env.NODE_ENV === 'production') {
+  const clientDist = path.join(__dirname, '../../client/dist');
+  app.use(express.static(clientDist));
+  app.get('*', (req, res) => res.sendFile(path.join(clientDist, 'index.html')));
+}
+
 const { errorHandler } = require('./middleware/errorHandler');
 app.use(errorHandler);
 
