@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom'
 import AppShell from './components/layout/AppShell'
 import LoginPage from './pages/LoginPage'
 import WorshipFormListPage from './pages/WorshipFormListPage'
@@ -15,6 +15,12 @@ function ProtectedLayout() {
   const user = useAuthStore(s => s.user)
   if (!user) return <Navigate to="/login" replace />
   return <AppShell />
+}
+
+// 편집 라우트 래퍼 - id별 key로 컴포넌트 강제 리마운트
+function EditFormRoute() {
+  const { id } = useParams()
+  return <WorshipFormPage key={id} />
 }
 
 // 관리자만 접근 가능
@@ -62,8 +68,8 @@ export default function App() {
 
           {/* 일반 + 관리자 공통 */}
           <Route index element={<WorshipFormListPage />} />
-          <Route path="/forms/new"       element={<WorshipFormPage />} />
-          <Route path="/forms/:id/edit"  element={<WorshipFormPage />} />
+          <Route path="/forms/new"       element={<WorshipFormPage key="new" />} />
+          <Route path="/forms/:id/edit"  element={<EditFormRoute />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

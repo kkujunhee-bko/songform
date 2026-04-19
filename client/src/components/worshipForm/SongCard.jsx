@@ -39,8 +39,6 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove }
     onUpdate({
       song_id: s.id,
       song_title: s.title,
-      performance_key: s.default_key || 'C',
-      semitone_adjustment: 0,
     })
     setTitleSuggestions([])
     setShowSuggestions(false)
@@ -55,8 +53,10 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove }
       song_id: data.song_id,
       song_title: data.song_title || song.song_title,
       performance_key: data.performance_key || song.performance_key,
+      semitone_adjustment: data.semitone_adjustment ?? song.semitone_adjustment ?? 0,
       sheet_music_url: data.sheet_music_url,
       sheet_music_snapshot: data.sheet_music_data,
+      ...(data.form_flow ? { form_flow: data.form_flow } : {}),
     })
   }
 
@@ -109,9 +109,6 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove }
                     <div className="text-sm text-white">{s.title}</div>
                     {s.artist && <div className="text-xs text-gray-400">{s.artist}</div>}
                   </div>
-                  {s.default_key && (
-                    <span className="text-xs px-1.5 py-0.5 bg-blue-900 text-blue-300 rounded font-mono">{s.default_key}</span>
-                  )}
                 </button>
               ))}
             </div>

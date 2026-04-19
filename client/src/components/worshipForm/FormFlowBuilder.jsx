@@ -15,7 +15,7 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { X, GripHorizontal, Plus } from 'lucide-react'
+import { X, Plus } from 'lucide-react'
 import { useSettingsStore } from '../../store/settingsStore'
 
 function FlowItem({ item, onRemove, onRepeatChange }) {
@@ -34,7 +34,7 @@ function FlowItem({ item, onRemove, onRepeatChange }) {
     >
       {/* 흐름 아이템 박스: 모바일 w-14 h-11, sm+ w-20 h-16 */}
       <div
-        className="relative flex flex-col items-center justify-center w-14 h-11 sm:w-20 sm:h-16 rounded-xl border-2 cursor-grab active:cursor-grabbing select-none transition-all"
+        className="relative flex flex-col items-center justify-center w-8 h-8 sm:w-12 sm:h-10 rounded-xl border-2 cursor-grab active:cursor-grabbing select-none transition-all"
         style={{
           backgroundColor: item.color + '22',
           borderColor: item.color,
@@ -42,16 +42,9 @@ function FlowItem({ item, onRemove, onRepeatChange }) {
         {...attributes}
         {...listeners}
       >
-        <GripHorizontal size={8} className="absolute top-0.5 text-gray-600 sm:hidden" />
-        <GripHorizontal size={10} className="absolute top-1 text-gray-600 hidden sm:block" />
-
         {/* 영문 이름 */}
         <span className="text-xs font-bold leading-tight text-center px-1" style={{ color: item.color }}>
           {item.name}
-        </span>
-        {/* 한글 이름: sm+ 에서만 표시 */}
-        <span className="text-xs leading-none hidden sm:block" style={{ color: item.color + 'cc' }}>
-          {item.name_ko}
         </span>
 
         {/* 삭제 버튼: 모바일은 항상 표시, sm+ hover 시 표시 */}
@@ -66,14 +59,14 @@ function FlowItem({ item, onRemove, onRepeatChange }) {
 
       {/* 반복 횟수 */}
       <div className="flex items-center gap-0.5">
-        <span className="text-xs text-gray-600">×</span>
+        <span className="text-sm font-bold text-gray-600">×</span>
         <input
           type="number"
           min="1"
           max="9"
           value={item.repeat || 1}
           onChange={(e) => onRepeatChange(item.uid, parseInt(e.target.value) || 1)}
-          className="w-7 text-center text-xs bg-gray-800 border border-gray-700 rounded px-0.5 py-0.5 text-gray-300 focus:outline-none focus:border-blue-500"
+          className="w-8 h-8 text-center text-sm font-bold bg-gray-800 border border-gray-700 rounded px-0 py-0 text-gray-300 focus:outline-none focus:border-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       </div>
     </div>
@@ -165,7 +158,7 @@ export default function FormFlowBuilder({ flow, onChange }) {
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={flow.map(i => i.uid)} strategy={horizontalListSortingStrategy}>
-                <div className="flex flex-wrap gap-2 sm:gap-3">
+                <div className="flex flex-wrap gap-[5px] sm:gap-[7px]">
                   {flow.map(item => (
                     <FlowItem
                       key={item.uid}

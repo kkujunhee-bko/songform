@@ -1,10 +1,11 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { Settings, LogOut, Users, ShieldCheck, Music, Sun, Moon, KeyRound, X } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { CONFIGURABLE_MENUS } from '../../lib/menuConfig'
 
 export default function Sidebar({ mobileOpen, onClose }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const user           = useAuthStore(s => s.user)
   const myPermissions  = useAuthStore(s => s.myPermissions)
   const logout         = useAuthStore(s => s.logout)
@@ -20,6 +21,19 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
   const handleNavClick = () => {
     if (onClose) onClose()
+  }
+
+  const isFormEditPage = /^\/forms\/(new|.+\/edit)/.test(location.pathname)
+
+  const handleNewFormClick = () => {
+    if (isFormEditPage) {
+      const confirmed = window.confirm(
+        '편집 중인 데이터는 저장해 주세요.\n새 송폼 만들기 페이지로 이동하시겠습니까?'
+      )
+      if (!confirmed) return
+    }
+    if (onClose) onClose()
+    navigate('/forms/new')
   }
 
   // 태블릿(md~lg): 아이콘 중앙 정렬  /  PC(lg+): 아이콘+텍스트 좌측 정렬
@@ -120,6 +134,20 @@ export default function Sidebar({ mobileOpen, onClose }) {
           ) : (
             visibleUserMenus.map(menu => {
               const Icon = menu.icon
+              if (menu.key === 'forms_create') {
+                return (
+                  <button
+                    key={menu.key}
+                    type="button"
+                    className={`w-full ${navCls(location.pathname === '/forms/new')}`}
+                    onClick={handleNewFormClick}
+                    title={menu.label}
+                  >
+                    <Icon size={16} className="flex-shrink-0" />
+                    <span className="md:hidden lg:inline">{menu.label}</span>
+                  </button>
+                )
+              }
               return (
                 <NavLink
                   key={menu.key}

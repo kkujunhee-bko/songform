@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Search, X, Database, Loader, ImageIcon, ExternalLink, RefreshCw, Upload } from 'lucide-react'
 import api from '../../api/client'
 
 export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }) {
-  const [tab, setTab] = useState('image')
+  const [tab, setTab] = useState('db')
   const [query, setQuery] = useState(songTitle || '')
 
   // DB 탭
@@ -12,11 +12,11 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
   const [dbLoading, setDbLoading] = useState(false)
 
   // 이미지 탭
-  const [images, setImages] = useState([])       // base64 또는 http URL 배열
+  const [images, setImages] = useState([])
   const [imgLoading, setImgLoading] = useState(false)
   const [imgError, setImgError] = useState('')
   const [savingIdx, setSavingIdx] = useState(null)
-  const [searchOffset, setSearchOffset] = useState(0)  // 재검색 오프셋
+  const [searchOffset, setSearchOffset] = useState(0)
 
   // 직접 올리기 탭
   const [uploadPreview, setUploadPreview] = useState(null)
@@ -24,31 +24,49 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef(null)
 
-  // ── DB 검색 ──────────────────────────────────────────
-  const handleDbSearch = async () => {
-    if (!query.trim()) return
+  // ── DB 검색 (query 없으면 저장된 악보 전체 조회) ─────────
+  const handleDbSearch = useCallback(async (searchQuery = query) => {
     setDbLoading(true)
     try {
-      const result = await api.get(`/sheet-music/search?q=${encodeURIComponent(query)}`)
+      const q = searchQuery.trim()
+      const url = q
+        ? `/sheet-music/search?q=${encodeURIComponent(q)}`
+        : '/sheet-music/search'
+      const result = await api.get(url)
       setDbResults(result.db || [])
     } catch (e) {
       console.error(e)
+      setDbResults([])
     } finally {
       setDbLoading(false)
     }
-  }
+  }, [query])
 
+  // "저장된 악보" 탭으로 전환 시 자동 로드
+  useEffect(() => {
+    if (tab === 'db') {
+      handleDbSearch()
+    }
+  }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── DB 탭에서 악보 선택 (form_flow, 키 정보도 함께 전달) ──
   const handleSelectDb = (song) => {
-    onSelect({
-      song_id: song.id,
-      song_title: song.title,
-      performance_key: song.default_key || 'C',
-      sheet_music_url: song.sheet_music_url,
-    })
+    const payload = { sheet_music_url: song.sheet_music_url }
+    if (Array.isArray(song.form_flow) && song.form_flow.length > 0) {
+      payload.form_flow = song.form_flow
+    }
+    if (song.performance_key) {
+      payload.performance_key = song.performance_key
+      payload.semitone_adjustment = song.semitone_adjustment ?? 0
+    } else if (song.default_key) {
+      payload.performance_key = song.default_key
+      payload.semitone_adjustment = 0
+    }
+    onSelect(payload)
     onClose()
   }
 
-  // ── Naver 이미지 검색 (초기 검색) ─────────────────────
+  // ── Naver 이미지 검색 ─────────────────────────────────────
   const handleImageSearch = async () => {
     if (!query.trim()) return
     setImgLoading(true)
@@ -70,7 +88,6 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
     }
   }
 
-  // ── Naver 이미지 재검색 (기존 결과에 추가) ─────────────
   const handleMoreSearch = async () => {
     if (!query.trim() || imgLoading) return
     setImgLoading(true)
@@ -90,7 +107,7 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
     }
   }
 
-  // ── 직접 올리기 ──────────────────────────────────────
+  // ── 직접 올리기 ──────────────────────────────────────────
   const handleFileSelect = (file) => {
     if (!file) return
     if (!file.type.startsWith('image/')) {
@@ -142,6 +159,12 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
     }
   }
 
+  // ── 탭 전환 핸들러 ───────────────────────────────────────
+  const handleTabChange = (newTab) => {
+    setTab(newTab)
+    // db 탭은 useEffect에서 자동 로드
+  }
+
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" onClick={onClose}>
       <div
@@ -154,52 +177,60 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
           <button className="btn btn-ghost p-1.5" onClick={onClose}><X size={18} /></button>
         </div>
 
-        {/* 검색 입력 */}
-        {tab !== 'upload' && <div className="px-5 py-3 border-b border-gray-800">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
-                className="input pl-9"
-                placeholder="노래 제목을 입력하세요..."
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key !== 'Enter') return
-                  tab === 'image' ? handleImageSearch() : handleDbSearch()
-                }}
-                autoFocus
-              />
+        {/* 검색 입력 (upload 탭 제외) */}
+        {tab !== 'upload' && (
+          <div className="px-5 py-3 border-b border-gray-800">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <input
+                  className="input pl-9"
+                  placeholder="노래 제목을 입력하세요..."
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key !== 'Enter') return
+                    if (tab === 'image') handleImageSearch()
+                    else handleDbSearch(e.currentTarget.value)
+                  }}
+                  autoFocus
+                />
+              </div>
+              <button
+                className="btn btn-primary"
+                onClick={() => tab === 'image' ? handleImageSearch() : handleDbSearch()}
+              >
+                검색
+              </button>
             </div>
-            <button
-              className="btn btn-primary"
-              onClick={() => tab === 'image' ? handleImageSearch() : handleDbSearch()}
-            >
-              검색
-            </button>
           </div>
-        </div>}
+        )}
 
         {/* 탭 */}
         <div className="flex border-b border-gray-800">
           <button
             className={`flex-1 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors
+              ${tab === 'db' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-500 hover:text-gray-300'}`}
+            onClick={() => handleTabChange('db')}
+          >
+            <Database size={14} />저장된 악보
+            {dbResults.length > 0 && (
+              <span className="text-xs bg-blue-600/30 text-blue-400 px-1.5 py-0.5 rounded-full">
+                {dbResults.length}
+              </span>
+            )}
+          </button>
+          <button
+            className={`flex-1 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors
               ${tab === 'image' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-500 hover:text-gray-300'}`}
-            onClick={() => setTab('image')}
+            onClick={() => handleTabChange('image')}
           >
             <ImageIcon size={14} />Naver 이미지
           </button>
           <button
             className={`flex-1 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors
-              ${tab === 'db' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-500 hover:text-gray-300'}`}
-            onClick={() => setTab('db')}
-          >
-            <Database size={14} />저장된 악보 ({dbResults.length})
-          </button>
-          <button
-            className={`flex-1 py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 transition-colors
               ${tab === 'upload' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-500 hover:text-gray-300'}`}
-            onClick={() => setTab('upload')}
+            onClick={() => handleTabChange('upload')}
           >
             <Upload size={14} />직접 올리기
           </button>
@@ -217,11 +248,9 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                   <p className="text-sm">Naver 이미지 검색 중... (10~20초 소요)</p>
                 </div>
               )}
-
               {!imgLoading && imgError && (
                 <div className="text-center py-8 text-red-400 text-sm">{imgError}</div>
               )}
-
               {!imgLoading && images.length === 0 && !imgError && (
                 <div className="text-center py-12 text-gray-500">
                   <ImageIcon size={32} className="mx-auto mb-3 opacity-30" />
@@ -229,7 +258,6 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                   <p className="text-xs mt-1 text-gray-600">"{query} 악보" 로 검색합니다.</p>
                 </div>
               )}
-
               {images.length > 0 && (
                 <div>
                   <p className="text-xs text-gray-500 mb-3">
@@ -261,8 +289,6 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                       </button>
                     ))}
                   </div>
-
-                  {/* 더 검색 버튼 */}
                   {!imgLoading && (
                     <div className="mt-4 flex justify-center">
                       <button
@@ -280,6 +306,92 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
             </div>
           )}
 
+          {/* ── 저장된 악보 탭 ── */}
+          {tab === 'db' && (
+            <div>
+              {dbLoading && (
+                <div className="flex items-center justify-center py-12 gap-2 text-gray-500">
+                  <Loader size={16} className="animate-spin" />
+                  <span className="text-sm">불러오는 중...</span>
+                </div>
+              )}
+
+              {!dbLoading && dbResults.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <Database size={32} className="mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">저장된 악보가 없습니다.</p>
+                  <p className="text-xs mt-1 text-gray-600">
+                    Naver 이미지 탭에서 검색 후 선택하면 자동 저장됩니다.
+                  </p>
+                </div>
+              )}
+
+              {!dbLoading && dbResults.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-3">
+                    클릭하면 해당 악보를 현재 곡에 바로 적용합니다. ({dbResults.length}건)
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {dbResults.map(song => (
+                      <button
+                        key={song.sheet_music_url}
+                        onClick={() => handleSelectDb(song)}
+                        className="group flex flex-col rounded-xl overflow-hidden border-2 border-gray-700 hover:border-blue-500 transition-all bg-gray-800 text-left"
+                      >
+                        {/* 악보 이미지 */}
+                        <div className="relative aspect-[4/3] bg-gray-900 overflow-hidden">
+                          <img
+                            src={song.sheet_music_url}
+                            alt={song.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                            onError={e => {
+                              e.currentTarget.style.display = 'none'
+                              e.currentTarget.nextElementSibling.style.display = 'flex'
+                            }}
+                          />
+                          {/* 이미지 로드 실패 시 플레이스홀더 */}
+                          <div
+                            className="absolute inset-0 items-center justify-center bg-gray-800 text-gray-600 text-xs hidden"
+                            style={{ display: 'none' }}
+                          >
+                            <ImageIcon size={24} className="opacity-30" />
+                          </div>
+                          {/* 호버 오버레이 */}
+                          <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/15 transition-all flex items-center justify-center">
+                            <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-blue-600 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-lg">
+                              이 악보 사용
+                            </span>
+                          </div>
+                        </div>
+                        {/* 곡 정보 */}
+                        <div className="px-2.5 py-2 flex items-center justify-between gap-1 min-w-0">
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-white truncate">{song.title}</p>
+                            {song.artist && (
+                              <p className="text-xs text-gray-500 truncate">{song.artist}</p>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            {song.default_key && (
+                              <span className="text-xs px-1.5 py-0.5 bg-blue-900/60 text-blue-300 rounded font-mono">
+                                {song.default_key}
+                              </span>
+                            )}
+                            {Array.isArray(song.form_flow) && song.form_flow.length > 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 bg-green-900/60 text-green-400 rounded">
+                                흐름 {song.form_flow.length}개
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── 직접 올리기 탭 ── */}
           {tab === 'upload' && (
             <div className="flex flex-col items-center gap-4">
@@ -290,7 +402,6 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                 className="hidden"
                 onChange={e => handleFileSelect(e.target.files[0])}
               />
-
               {!uploadPreview ? (
                 <div
                   className={`w-full border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors
@@ -332,43 +443,6 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* ── DB 탭 ── */}
-          {tab === 'db' && (
-            <div className="space-y-2">
-              {dbLoading && (
-                <div className="flex items-center justify-center py-8 gap-2 text-gray-500">
-                  <Loader size={16} className="animate-spin" />검색 중...
-                </div>
-              )}
-              {!dbLoading && dbResults.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>저장된 악보가 없습니다.</p>
-                  <p className="text-sm mt-1">Naver 이미지 탭에서 검색 후 선택하면 자동 저장됩니다.</p>
-                </div>
-              )}
-              {!dbLoading && dbResults.map(song => (
-                <button
-                  key={song.id}
-                  className="w-full text-left p-3 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 hover:border-blue-600 transition-all"
-                  onClick={() => handleSelectDb(song)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-white">{song.title}</div>
-                      {song.artist && <div className="text-sm text-gray-400">{song.artist}</div>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {song.default_key && (
-                        <span className="px-2 py-0.5 bg-blue-900 text-blue-300 text-xs rounded font-mono">{song.default_key}</span>
-                      )}
-                      {song.sheet_music_url && <ExternalLink size={12} className="text-gray-500" />}
-                    </div>
-                  </div>
-                </button>
-              ))}
             </div>
           )}
         </div>

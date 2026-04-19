@@ -10,15 +10,46 @@ const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // GET /api/sheet-music/search?q=
+// songs + worship_form_songs 합쳐 검색, sheet_music_url 기준 중복 제거 (최신 우선)
+// form_flow도 함께 반환 (worship_form_songs 기준)
 router.get('/search', asyncHandler(async (req, res) => {
   const { q = '' } = req.query;
-  if (!q.trim()) return res.json({ db: [] });
+  const cond = q.trim();
+  const param = cond ? [`%${cond}%`] : [];
 
-  const dbResult = await query(
-    `SELECT id, title, artist, default_key, sheet_music_url, source
-     FROM songs WHERE title ILIKE $1 ORDER BY title ASC LIMIT 20`,
-    [`%${q}%`]
-  );
+  const sql = `
+    WITH ranked AS (
+      SELECT
+        title, artist, default_key, sheet_music_url, form_flow,
+        performance_key, semitone_adjustment, ts,
+        ROW_NUMBER() OVER (PARTITION BY sheet_music_url ORDER BY ts DESC NULLS LAST) AS rn
+      FROM (
+        SELECT title, artist, default_key, sheet_music_url,
+               NULL::jsonb AS form_flow, NULL::varchar AS performance_key,
+               NULL::smallint AS semitone_adjustment, updated_at AS ts
+        FROM songs
+        WHERE sheet_music_url IS NOT NULL
+          ${cond ? 'AND title ILIKE $1' : ''}
+
+        UNION ALL
+
+        SELECT song_title AS title, NULL::text AS artist, NULL::text AS default_key,
+               sheet_music_url, form_flow, performance_key,
+               semitone_adjustment, created_at AS ts
+        FROM worship_form_songs
+        WHERE sheet_music_url IS NOT NULL
+          ${cond ? 'AND song_title ILIKE $1' : ''}
+      ) sub
+    )
+    SELECT title, artist, default_key, sheet_music_url, form_flow,
+           performance_key, semitone_adjustment
+    FROM ranked
+    WHERE rn = 1
+    ORDER BY ts DESC NULLS LAST
+    LIMIT 30
+  `;
+
+  const dbResult = await query(sql, param);
   res.json({ db: dbResult.rows });
 }));
 
