@@ -269,7 +269,7 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                         key={idx}
                         onClick={() => handleSelectImage(src, idx)}
                         disabled={savingIdx !== null}
-                        className="relative group rounded-lg overflow-hidden border-2 border-gray-700 hover:border-blue-500 transition-all bg-gray-800 aspect-[4/3]"
+                        className="relative group overflow-hidden border-2 border-gray-700 hover:border-blue-500 transition-all bg-gray-800 aspect-[1/1.414] p-[3px]"
                       >
                         <img
                           src={src}
