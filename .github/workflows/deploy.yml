@@ -28,12 +28,30 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: client 빌드
+        run: |
+          cd client
+          npm ci
+          npm run build
+
       - name: server 파일 rsync 복사 (.env 제외)
         run: |
           rsync -avz --exclude='.env' \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             server/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/app/react/songform/server/
+
+      - name: client dist rsync 복사
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            client/dist/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/app/react/songform/client/dist/
 
       - name: Docker 빌드 및 재시작
         uses: appleboy/ssh-action@v1.0.3
