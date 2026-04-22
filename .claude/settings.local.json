@@ -21,7 +21,8 @@
       "Read(//c/Program Files \\(x86\\)/**)",
       "Bash(python -m markitdown SongForm_사용자매뉴얼.pptx)",
       "Bash(python -m markitdown \"D:/Project/SongForm/SongForm_사용자매뉴얼.pptx\")",
-      "Bash(node -e \"const fs=require\\('fs'\\); const size=fs.statSync\\('D:/Project/SongForm/SongForm_사용자매뉴얼.pptx'\\).size; console.log\\('파일 크기:', Math.round\\(size/1024\\), 'KB'\\);\")"
+      "Bash(node -e \"const fs=require\\('fs'\\); const size=fs.statSync\\('D:/Project/SongForm/SongForm_사용자매뉴얼.pptx'\\).size; console.log\\('파일 크기:', Math.round\\(size/1024\\), 'KB'\\);\")",
+      "Bash(find /d/Project/SongForm -type f \\\\\\( -name \"*.tsx\" -o -name \"*.jsx\" -o -name \"*.ts\" -o -name \"*.js\" \\\\\\) ! -path \"*/node_modules/*\" -exec grep -l \"V\\\\|Cx\\\\|Verse\\\\|Chorus\\\\|Bridge\\\\|Intro\" {} \\\\;)"
     ]
   }
 }

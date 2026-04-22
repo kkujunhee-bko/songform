@@ -204,49 +204,99 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
       align: 'center', valign: 'middle',
     });
 
-    // ── ③ 흐름 아이콘: 빨간 bold 텍스트만, 박스/배경 없음 ──
+    // ── ③ 흐름 아이콘: 빨간 bold 텍스트, 최대 2행 지원 ──
     if (formFlow.length > 0) {
-      const ICON_W  = 0.55;
-      const ICON_H  = BADGE_H;
+      const ICON_H  = BADGE_H;                        // 0.50"
       const ARR_W   = 0.20;
       const GAP     = 0.02;
-      const ICON_Y  = BADGE_Y;        // 뱃지 상단에 정렬 (최상단)
-      let fx = BADGE_X + BADGE_W + 0.10;
-      const displayCount = Math.min(formFlow.length, 8);
+      const ROW_GAP = 0.05;
+      const START_X = BADGE_X + BADGE_W + 0.10;       // 0.70"
+      const AVAIL_W = 7.5 - START_X - 0.10;           // 6.70"
 
-      for (let fi = 0; fi < displayCount; fi++) {
-        const el = formFlow[fi];
+      // 글자 수에 따른 레이블 너비 (Cx2=3자 기준 0.55"이 정상이므로 비례 설정)
+      const IW_MAP = [0.35, 0.45, 0.55, 0.60];
+      const getIw = (label) => IW_MAP[Math.min(label.length - 1, 3)];
 
-        // 이니셜(1글자) + 반복  예: V  Vx2  Cx3
-        const initial      = (el.name || '?').charAt(0).toUpperCase();
-        const repeatSuffix = el.repeat && el.repeat > 1 ? `x${el.repeat}` : '';
-        const label        = initial + repeatSuffix;
+      // 모든 아이템 계산: V1 같은 이름에서 숫자도 추출
+      const allItems = formFlow.map(el => {
+        const firstLetter = (el.name || '?').charAt(0).toUpperCase();
+        const numPart     = ((el.name || '').match(/\d+/) || [])[0] || '';
+        const initial     = firstLetter + numPart;
+        const rSuffix     = el.repeat && el.repeat > 1 ? `x${el.repeat}` : '';
+        const fullLabel   = initial + rSuffix;
+        return { initial, rSuffix, iw: getIw(fullLabel) };
+      });
 
-        // 빨간 bold 텍스트 (박스/배경 없음, wrap:false 로 단행 강제)
-        slide.addText(label, {
-          x: fx, y: ICON_Y, w: ICON_W, h: ICON_H,
-          fontSize: 26, bold: true, color: 'DC2626',
-          wrap: false,
-          align: 'center', valign: 'middle',
-        });
-
-        fx += ICON_W + GAP;
-
-        // 화살표 → (마지막 요소 제외, red)
-        if (fi < displayCount - 1) {
-          slide.addText('→', {
-            x: fx, y: ICON_Y, w: ARR_W, h: ICON_H,
-            fontSize: 16, bold: true, color: 'DC2626',
-            align: 'center', valign: 'middle',
-          });
-          fx += ARR_W + GAP;
+      // 행 분배: 너비 초과 시 다음 행으로
+      const allRows = [];
+      let curRow = [], curW = 0;
+      for (const item of allItems) {
+        const addW = item.iw + (curRow.length > 0 ? ARR_W + GAP * 2 : 0);
+        if (curRow.length > 0 && curW + addW > AVAIL_W) {
+          allRows.push(curRow);
+          curRow = [item];
+          curW   = item.iw;
+        } else {
+          if (curRow.length > 0) curW += ARR_W + GAP * 2;
+          curRow.push(item);
+          curW += item.iw;
         }
       }
+      if (curRow.length > 0) allRows.push(curRow);
 
-      // 8개 초과 표시
-      if (formFlow.length > 8) {
-        slide.addText(`+${formFlow.length - 8}`, {
-          x: fx + 0.02, y: ICON_Y, w: 0.42, h: ICON_H,
+      // 최대 2행만 표시
+      const rows         = allRows.slice(0, 2);
+      const shownCount   = rows.reduce((s, r) => s + r.length, 0);
+      const overflowCount = allItems.length - shownCount;
+
+      // 렌더링
+      rows.forEach((rowItems, ri) => {
+        const iy = BADGE_Y + ri * (ICON_H + ROW_GAP);
+        let fx   = START_X;
+
+        rowItems.forEach((item, fi) => {
+          const { initial, rSuffix, iw } = item;
+
+          if (rSuffix) {
+            // 메인 글자 크게(26pt), x·숫자는 작게(14pt)
+            slide.addText([
+              { text: initial, options: { fontSize: 26, bold: true, color: 'DC2626' } },
+              { text: rSuffix, options: { fontSize: 14, bold: true, color: 'DC2626' } },
+            ], { x: fx, y: iy, w: iw, h: ICON_H, align: 'center', valign: 'middle' });
+          } else {
+            slide.addText(initial, {
+              x: fx, y: iy, w: iw, h: ICON_H,
+              fontSize: 26, bold: true, color: 'DC2626',
+              align: 'center', valign: 'middle', wrap: false,
+            });
+          }
+
+          fx += iw + GAP;
+
+          // 화살표: 행 마지막 아이템 제외
+          if (fi < rowItems.length - 1) {
+            slide.addText('→', {
+              x: fx, y: iy, w: ARR_W, h: ICON_H,
+              fontSize: 16, bold: true, color: 'DC2626',
+              align: 'center', valign: 'middle',
+            });
+            fx += ARR_W + GAP;
+          }
+        });
+      });
+
+      // 2행 초과 시 +N 표시
+      if (overflowCount > 0) {
+        const lastRow = rows[rows.length - 1];
+        const lastRi  = rows.length - 1;
+        const iy = BADGE_Y + lastRi * (ICON_H + ROW_GAP);
+        let fx = START_X;
+        lastRow.forEach((item, fi) => {
+          fx += item.iw + GAP;
+          if (fi < lastRow.length - 1) fx += ARR_W + GAP;
+        });
+        slide.addText(`+${overflowCount}`, {
+          x: fx, y: iy, w: 0.42, h: ICON_H,
           fontSize: 18, bold: true, color: 'DC2626', align: 'left', valign: 'middle',
         });
       }
