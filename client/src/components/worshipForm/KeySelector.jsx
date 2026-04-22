@@ -25,15 +25,28 @@ export default function KeySelector({ value = 'C', onChange }) {
     }
   }, [value])
 
+  // C, F는 플랫 불필요 / B, E는 샵 불필요
+  const disabledAccidentals = (b) => {
+    if (b === 'C' || b === 'F') return ['b']
+    if (b === 'B' || b === 'E') return ['#']
+    return []
+  }
+
   const handleBase = (newBase) => {
+    const disabled = disabledAccidentals(newBase)
+    const newAcc = disabled.includes(accidental) ? 'n' : accidental
     setBase(newBase)
-    onChange({ key: buildKey(newBase, accidental) })
+    setAccidental(newAcc)
+    onChange({ key: buildKey(newBase, newAcc) })
   }
 
   const handleAccidental = (newAcc) => {
+    if (disabledAccidentals(base).includes(newAcc)) return
     setAccidental(newAcc)
     onChange({ key: buildKey(base, newAcc) })
   }
+
+  const disabled = disabledAccidentals(base)
 
   return (
     <div>
@@ -59,20 +72,27 @@ export default function KeySelector({ value = 'C', onChange }) {
         <div className="w-3" />
 
         {/* ── 변화표 라디오 ── */}
-        {ACCIDENTAL_LIST.map(acc => (
-          <button
-            key={acc.value}
-            type="button"
-            title={acc.title}
-            onClick={() => handleAccidental(acc.value)}
-            className={`w-10 h-8 flex items-center justify-center rounded text-base font-semibold border transition-colors
-              ${accidental === acc.value
-                ? 'bg-blue-600 border-blue-500 text-white'
-                : 'border-gray-600 text-gray-300 hover:border-gray-400 hover:text-white'}`}
-          >
-            {acc.label}
-          </button>
-        ))}
+        {ACCIDENTAL_LIST.map(acc => {
+          const isDisabled = disabled.includes(acc.value)
+          const isSelected = accidental === acc.value
+          return (
+            <button
+              key={acc.value}
+              type="button"
+              title={isDisabled ? `${acc.title} (이 키에서 사용 불가)` : acc.title}
+              disabled={isDisabled}
+              onClick={() => handleAccidental(acc.value)}
+              className={`w-10 h-8 flex items-center justify-center rounded text-base font-semibold border transition-colors
+                ${isDisabled
+                  ? 'border-gray-700 text-gray-600 bg-gray-800 cursor-not-allowed opacity-40'
+                  : isSelected
+                    ? 'bg-blue-600 border-blue-500 text-white'
+                    : 'border-gray-600 text-gray-300 hover:border-gray-400 hover:text-white'}`}
+            >
+              {acc.label}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
