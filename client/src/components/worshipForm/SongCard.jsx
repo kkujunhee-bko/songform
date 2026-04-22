@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GripVertical, Trash2, Music, Search, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
+import { GripVertical, Trash2, Copy, Music, Search, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import KeySelector from './KeySelector'
@@ -7,7 +7,7 @@ import FormFlowBuilder from './FormFlowBuilder'
 import SheetMusicModal from './SheetMusicModal'
 import api from '../../api/client'
 
-export default function SongCard({ song, index, total = 20, onUpdate, onRemove }) {
+export default function SongCard({ song, index, total = 20, onUpdate, onRemove, onDuplicate }) {
   const [expanded, setExpanded] = useState(true)
   const [showSheetMusic, setShowSheetMusic] = useState(false)
   const [titleSuggestions, setTitleSuggestions] = useState([])
@@ -137,6 +137,20 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove }
           onClick={() => setExpanded(!expanded)}
         >
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+
+        {/* 복제 버튼 */}
+        <button
+          type="button"
+          className="btn btn-ghost p-2 hover:text-blue-400 flex-shrink-0"
+          onClick={() => {
+            if (window.confirm('복사 하시겠습니까?')) {
+              onDuplicate()
+            }
+          }}
+          title="곡 복제"
+        >
+          <Copy size={16} />
         </button>
 
         {/* 삭제 버튼 */}

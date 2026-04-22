@@ -193,6 +193,39 @@ export default function WorshipFormPage() {
   const addSong = () => setSongs(prev => [...prev, DEFAULT_SONG()])
   const removeSong = (uid) => setSongs(prev => prev.filter(s => s.uid !== uid))
 
+  const duplicateSong = (uid) => {
+    setSongs(prev => {
+      const idx = prev.findIndex(s => s.uid === uid)
+      if (idx === -1) return prev
+      const src = prev[idx]
+
+      const baseTitle = src.song_title || ''
+      const newTitle = baseTitle.endsWith('(copy)') ? baseTitle : `${baseTitle}(copy)`
+
+      const duplicate = {
+        ...src,
+        uid: `song_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        song_title: newTitle,
+      }
+
+      const nextIdx = idx + 1
+      if (nextIdx < prev.length) {
+        const next = prev[nextIdx]
+        const isEmpty = !next.song_title &&
+          (!next.form_flow || next.form_flow.length === 0) &&
+          !next.comment &&
+          !next.sheet_music_url
+        if (isEmpty) {
+          return prev.map((s, i) => i === nextIdx ? duplicate : s)
+        }
+      }
+
+      const result = [...prev]
+      result.splice(idx + 1, 0, duplicate)
+      return result
+    })
+  }
+
   const handleDragEnd = ({ active, over }) => {
     if (active.id !== over?.id) {
       const oldIdx = songs.findIndex(s => s.uid === active.id)
@@ -428,6 +461,7 @@ export default function WorshipFormPage() {
                   total={songs.length}
                   onUpdate={(updates) => updateSong(song.uid, updates)}
                   onRemove={() => removeSong(song.uid)}
+                  onDuplicate={() => duplicateSong(song.uid)}
                 />
               ))}
             </div>
