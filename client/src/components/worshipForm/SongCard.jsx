@@ -143,7 +143,15 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove }
         <button
           type="button"
           className="btn btn-ghost p-2 hover:text-red-400 flex-shrink-0"
-          onClick={onRemove}
+          onClick={() => {
+            const hasData = song.song_title ||
+              (song.form_flow && song.form_flow.length > 0) ||
+              song.comment ||
+              song.sheet_music_url
+            if (!hasData || window.confirm('곡을 삭제 하시겠습니까?')) {
+              onRemove()
+            }
+          }}
           title="곡 삭제"
         >
           <Trash2 size={16} />
