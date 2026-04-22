@@ -14,7 +14,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to Ubuntu Server
+    name: Deploy to GCP (Docker)
     runs-on: ubuntu-latest
 
     steps:
@@ -30,23 +30,20 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
             set -e
-            echo "=== [1/5] 저장소 최신화 ==="
-            cd ${{ secrets.SERVER_PATH }}
+
+            echo "=== [1/4] 저장소 최신화 ==="
+            cd /app/react/songform
             git pull origin main
 
-            echo "=== [2/5] 의존성 설치 ==="
-            npm install --workspace=server --omit=dev
-            npm install --workspace=client
+            echo "=== [2/4] node-server 이미지 빌드 ==="
+            cd /app
+            docker-compose build node-server
 
-            echo "=== [3/5] 클라이언트 빌드 ==="
-            npm run build --workspace=client
+            echo "=== [3/4] DB 마이그레이션 ==="
+            docker-compose run --rm node-server npm run migrate
 
-            echo "=== [4/5] DB 마이그레이션 (신규 마이그레이션만 적용) ==="
-            npm run db:migrate
-
-            echo "=== [5/5] PM2 재시작 ==="
-            pm2 reload songform-server --update-env
-            pm2 save
+            echo "=== [4/4] node-server 재시작 ==="
+            docker-compose up -d node-server
 
             echo "=== 배포 완료 ==="
-            pm2 list
+            docker ps
