@@ -191,7 +191,11 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove }
                 <button
                   type="button"
                   className="ml-auto text-xs text-gray-600 hover:text-red-400 transition-colors"
-                  onClick={() => onUpdate({ sheet_music_url: null })}
+                  onClick={() => {
+                    if (window.confirm('첨부 악보를 삭제 하시겠습니까?')) {
+                      onUpdate({ sheet_music_url: null });
+                    }
+                  }}
                   title="악보 제거"
                 >
                   ✕
