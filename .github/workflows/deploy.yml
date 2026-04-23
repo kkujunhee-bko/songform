@@ -39,9 +39,9 @@ jobs:
           npm ci
           npm run build
 
-      - name: server 파일 rsync 복사 (.env 제외)
+      - name: server 파일 rsync 복사 (.env, uploads 제외)
         run: |
-          rsync -avz --exclude='.env' \
+          rsync -avz --exclude='.env' --exclude='uploads/' \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             server/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/app/react/songform/server/
