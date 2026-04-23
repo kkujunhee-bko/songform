@@ -186,6 +186,7 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
           <FormFlowBuilder
             flow={song.form_flow || []}
             onChange={(flow) => onUpdate({ form_flow: flow })}
+            enablePreset
           />
 
           {/* 송폼 코멘트 */}

@@ -29,6 +29,8 @@ app.use('/api/sheet-music',       require('./routes/sheetMusic'));
 app.use('/api/export',            require('./routes/export'));
 app.use('/api/settings',          require('./routes/settings'));
 app.use('/api/role-permissions',  require('./routes/rolePermissions'));
+app.use('/api/song-form-preset-categories', require('./routes/songFormPresetCategories'));
+app.use('/api/song-form-presets',           require('./routes/songFormPresets'));
 
 // 저장된 악보 이미지 정적 서빙
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

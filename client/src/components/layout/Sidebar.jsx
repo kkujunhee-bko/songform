@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Settings, LogOut, Users, ShieldCheck, Music, Sun, Moon, KeyRound, X } from 'lucide-react'
+import { Settings, LogOut, Users, ShieldCheck, Music, Sun, Moon, KeyRound, X, LayoutTemplate } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { CONFIGURABLE_MENUS } from '../../lib/menuConfig'
 
@@ -113,6 +113,10 @@ export default function Sidebar({ mobileOpen, onClose }) {
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
         {isAdmin ? (
           <>
+            <NavLink to="/presets" className={({ isActive }) => navCls(isActive)} onClick={handleNavClick} title="송폼 프리셋 관리">
+              <LayoutTemplate size={16} className="flex-shrink-0" />
+              <span className="md:hidden lg:inline">송폼 프리셋 관리</span>
+            </NavLink>
             <NavLink to="/users" className={({ isActive }) => navCls(isActive)} onClick={handleNavClick} title="회원 관리">
               <Users size={16} className="flex-shrink-0" />
               <span className="md:hidden lg:inline">회원 관리</span>

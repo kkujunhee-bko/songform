@@ -6,8 +6,7 @@ import { List, Plus, Settings } from 'lucide-react'
  */
 export const CONFIGURABLE_MENUS = [
   { key: 'forms_list',   label: '송폼 목록',     icon: List,     path: '/' },
-  { key: 'forms_create', label: '새 송폼 만들기', icon: Plus,     path: '/forms/new' },
-  { key: 'settings',     label: '환경설정',       icon: Settings, path: '/settings' },
+  { key: 'forms_create', label: '새 송폼 만들기', icon: Plus,     path: '/forms/new' },  
 ]
 
 /** 권한 관리 대상 역할 */

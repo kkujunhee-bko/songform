@@ -7,6 +7,8 @@ import WorshipFormPage from './pages/WorshipFormPage'
 import SettingsPage from './pages/SettingsPage'
 import UserManagementPage from './pages/UserManagementPage'
 import RolePermissionsPage from './pages/RolePermissionsPage'
+import PresetListPage from './pages/PresetListPage'
+import PresetEditPage from './pages/PresetEditPage'
 import { useAuthStore } from './store/authStore'
 import { useSettingsStore } from './store/settingsStore'
 
@@ -65,6 +67,9 @@ export default function App() {
           <Route path="/settings"          element={<AdminRoute><SettingsPage /></AdminRoute>} />
           <Route path="/users"             element={<AdminRoute><UserManagementPage /></AdminRoute>} />
           <Route path="/role-permissions"  element={<AdminRoute><RolePermissionsPage /></AdminRoute>} />
+          <Route path="/presets"           element={<AdminRoute><PresetListPage /></AdminRoute>} />
+          <Route path="/presets/new"       element={<AdminRoute><PresetEditPage key="new" /></AdminRoute>} />
+          <Route path="/presets/:id/edit"  element={<AdminRoute><PresetEditPage /></AdminRoute>} />
 
           {/* 일반 + 관리자 공통 */}
           <Route index element={<WorshipFormListPage />} />

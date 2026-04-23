@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Trash2, GripVertical, Save, Check, Settings, Music, List, Building2 } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { Plus, Trash2, GripVertical, Save, Check, Settings, Music, List, Building2, LayoutTemplate } from 'lucide-react'
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
@@ -379,6 +379,122 @@ function FormElementSection() {
   )
 }
 
+// ─── 정렬 가능한 프리셋 구분 아이템 ─────────────────────────────────────────
+function SortablePresetCategoryItem({ item, onUpdate, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState(item.name)
+
+  const handleSave = async () => {
+    if (!name.trim()) return
+    try {
+      await api.put(`/song-form-preset-categories/${item.id}`, { name: name.trim() })
+      onUpdate()
+      setEditing(false)
+    } catch (e) { alert(e.message) }
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 p-3 bg-gray-800 rounded-lg">
+      <div className="cursor-grab text-gray-600" {...attributes} {...listeners}>
+        <GripVertical size={14} />
+      </div>
+      {editing ? (
+        <>
+          <input className="input flex-1 text-sm py-1" value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSave()} autoFocus />
+          <button className="btn btn-primary py-1 px-2 text-xs" onClick={handleSave}><Save size={12} /></button>
+        </>
+      ) : (
+        <>
+          <span className="flex-1 text-sm text-white">{item.name}</span>
+          <button className="btn btn-ghost py-1 px-2 text-xs" onClick={() => setEditing(true)}>수정</button>
+        </>
+      )}
+      <button className="btn btn-ghost p-1.5 hover:text-red-400" onClick={() => onDelete(item.id)}>
+        <Trash2 size={13} />
+      </button>
+    </div>
+  )
+}
+
+function PresetCategorySection() {
+  const [items, setItems] = useState([])
+  const [newName, setNewName] = useState('')
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
+
+  const load = useCallback(async () => {
+    try {
+      const data = await api.get('/song-form-preset-categories')
+      setItems(data)
+    } catch (e) { alert(e.message) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleAdd = async () => {
+    if (!newName.trim()) return
+    try {
+      await api.post('/song-form-preset-categories', { name: newName.trim(), sort_order: items.length })
+      await load()
+      setNewName('')
+    } catch (e) { alert(e.message) }
+  }
+
+  const handleDelete = async (id) => {
+    if (!confirm('정말 삭제하시겠습니까?')) return
+    try {
+      await api.delete(`/song-form-preset-categories/${id}`)
+      await load()
+    } catch (e) { alert(e.message) }
+  }
+
+  const handleDragEnd = async ({ active, over }) => {
+    if (!over || active.id === over.id) return
+    const oldIdx = items.findIndex(c => c.id === active.id)
+    const newIdx = items.findIndex(c => c.id === over.id)
+    const reordered = arrayMove(items, oldIdx, newIdx)
+    try {
+      await api.post('/song-form-preset-categories/reorder', { ids: reordered.map(c => c.id) })
+      await load()
+    } catch (e) { alert(e.message) }
+  }
+
+  return (
+    <section className="card">
+      <div className="flex items-center gap-2 mb-4">
+        <LayoutTemplate size={18} className="text-indigo-400" />
+        <h2 className="text-base font-semibold text-white">송폼 프리셋 구분 관리</h2>
+        <span className="text-xs text-gray-500">(드래그로 순서 변경)</span>
+      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={items.map(c => c.id)} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2 mb-3">
+            {items.map(item => (
+              <SortablePresetCategoryItem key={item.id} item={item} onUpdate={load} onDelete={handleDelete} />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+      <div className="flex gap-2">
+        <input
+          className="input flex-1"
+          placeholder="새 구분명 (예: 주일예배 패턴)..."
+          value={newName}
+          onChange={e => setNewName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+        />
+        <button className="btn btn-primary" onClick={handleAdd} disabled={!newName.trim()}>
+          <Plus size={14} />추가
+        </button>
+      </div>
+    </section>
+  )
+}
+
 // ─── 메인 설정 페이지 ───────────────────────────────────────────────────────
 export default function SettingsPage() {
   return (
@@ -391,6 +507,7 @@ export default function SettingsPage() {
         <DenominationSection />
         <CategorySection />
         <FormElementSection />
+        <PresetCategorySection />
       </div>
     </div>
   )
