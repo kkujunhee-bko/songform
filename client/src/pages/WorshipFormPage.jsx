@@ -6,11 +6,12 @@ import {
 import {
   SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove,
 } from '@dnd-kit/sortable'
-import { Plus, Save, FileDown, ArrowLeft, Loader, User } from 'lucide-react'
+import { Plus, Save, FileDown, ArrowLeft, Loader, User, Eye } from 'lucide-react'
 import api from '../api/client'
 import { useSettingsStore } from '../store/settingsStore'
 import { useAuthStore } from '../store/authStore'
 import SongCard from '../components/worshipForm/SongCard'
+import PptPreviewModal from '../components/worshipForm/PptPreviewModal'
 import { transposeKey } from '../lib/keyUtils'
 
 const DEFAULT_SONG = () => ({
@@ -105,6 +106,7 @@ export default function WorshipFormPage() {
   const [season, setSeason] = useState(null)
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
   const [savedFormId, setSavedFormId] = useState(null)
   const [leaderIds, setLeaderIds] = useState([])      // 선택된 인도자 ID 배열
   const [members, setMembers] = useState([])           // 전체 회원 목록
@@ -326,6 +328,14 @@ export default function WorshipFormPage() {
           <h1 className="text-2xl font-bold text-white">{isEdit ? '예배 송폼 편집' : '새 예배 송폼'}</h1>
         </div>
         <button
+          className="btn hover:bg-gray-200 border border-gray-600 hover:border-gray-400 bg-transparent text-gray-300 hover:text-white"
+          onClick={() => setShowPreview(true)}
+          title="PPT 미리보기"
+        >
+          <Eye size={15} />
+          미리보기
+        </button>
+        <button
           className="btn btn-secondary"
           onClick={handleExport}
           disabled={exporting}
@@ -481,6 +491,14 @@ export default function WorshipFormPage() {
       <div className="mt-6 flex justify-end gap-3">
         <button className="btn btn-secondary" onClick={() => navigate('/')}>취소</button>
         <button
+          className="btn hover:bg-gray-200 border border-gray-600 hover:border-gray-400 bg-transparent text-gray-300 hover:text-white"
+          onClick={() => setShowPreview(true)}
+          title="PPT 미리보기"
+        >
+          <Eye size={15} />
+          미리보기
+        </button>
+        <button
           className="btn btn-secondary"
           onClick={handleExport}
           disabled={exporting}
@@ -497,6 +515,21 @@ export default function WorshipFormPage() {
           저장
         </button>
       </div>
+
+      {/* PPT 미리보기 모달 */}
+      {showPreview && (
+        <PptPreviewModal
+          onClose={() => setShowPreview(false)}
+          onExport={handleExport}
+          exporting={exporting}
+          formData={formData}
+          songs={songs}
+          season={season}
+          members={members}
+          leaderIds={leaderIds}
+          categories={categories}
+        />
+      )}
     </div>
   )
 }

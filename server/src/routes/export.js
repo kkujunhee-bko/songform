@@ -62,6 +62,7 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
   const pptx = new pptxgen();
   pptx.defineLayout({ name: 'PORTRAIT', width: 7.5, height: 10.0 });
   pptx.layout = 'PORTRAIT';
+  pptx.theme = { headFontFace: 'Noto Sans KR', bodyFontFace: 'Noto Sans KR' };
 
   // 날짜 문자열
   const worshipDate = new Date(form.worship_date + 'T00:00:00');
@@ -129,15 +130,14 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
       x: 0.4, y: SONG_START_Y + i * lineH, w: 0.35, h: lineH,
       fontSize: 14, color: '3B82F6', bold: true, align: 'center', valign: 'middle',
     });
-    // 제목
-    slide1.addText(s.song_title, {
-      x: 0.85, y: SONG_START_Y + i * lineH, w: 5.1, h: lineH,
-      fontSize: 14, color: '1E293B', align: 'left', valign: 'middle',
-    });
-    // 키
-    slide1.addText(s.performance_key, {
-      x: 6.0, y: SONG_START_Y + i * lineH, w: 1.1, h: lineH,
-      fontSize: 13, color: '3B82F6', bold: true, align: 'right', valign: 'middle',
+    // 제목 + 키 인라인
+    const titleParts = [
+      { text: s.song_title, options: { color: '1E293B', fontSize: 14 } },
+      ...(s.performance_key ? [{ text: ` - ${s.performance_key}`, options: { color: '3B82F6', fontSize: 14, bold: true } }] : []),
+    ];
+    slide1.addText(titleParts, {
+      x: 0.85, y: SONG_START_Y + i * lineH, w: 6.25, h: lineH,
+      align: 'left', valign: 'middle',
     });
   }
   if (songs.length > 10) {
@@ -200,22 +200,22 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
     });
     slide.addText(`${si + 1}`, {
       x: BADGE_X, y: BADGE_Y, w: BADGE_W, h: BADGE_H,
-      fontSize: 20, bold: true, color: 'FFFFFF',
+      fontSize: 15, bold: true, color: 'FFFFFF',
       align: 'center', valign: 'middle',
     });
 
     // ── ③ 흐름 아이콘: 빨간 bold 텍스트, 최대 2행 지원 ──
     if (formFlow.length > 0) {
       const ICON_H  = BADGE_H;                        // 0.50"
-      const ARR_W   = 0.20;
-      const GAP     = 0.02;
+      const ARR_W   = 0.15;
+      const GAP     = 0.05;
       const ROW_GAP = 0.05;
       const START_X = BADGE_X + BADGE_W + 0.10;       // 0.70"
       const AVAIL_W = 7.5 - START_X - 0.10;           // 6.70"
 
-      // 글자 수에 따른 레이블 너비 (Cx2=3자 기준 0.55"이 정상이므로 비례 설정)
-      const IW_MAP = [0.35, 0.45, 0.55, 0.60];
-      const getIw = (label) => IW_MAP[Math.min(label.length - 1, 3)];
+      // initial 글자 수 기준 너비 / rSuffix(x2 등) 추가 너비는 별도 합산
+      const IW_MAP    = [0.13, 0.20, 0.28, 0.35];
+      const SUFFIX_W  = 0.18;  // "x2" 등 2자 rSuffix 전용 여유폭
 
       // 모든 아이템 계산: V1 같은 이름에서 숫자도 추출
       const allItems = formFlow.map(el => {
@@ -223,29 +223,31 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
         const numPart     = ((el.name || '').match(/\d+/) || [])[0] || '';
         const initial     = firstLetter + numPart;
         const rSuffix     = el.repeat && el.repeat > 1 ? `x${el.repeat}` : '';
-        const fullLabel   = initial + rSuffix;
-        return { initial, rSuffix, iw: getIw(fullLabel) };
+        const baseIw      = IW_MAP[Math.min(initial.length - 1, 3)];
+        const iw          = rSuffix ? baseIw + SUFFIX_W : baseIw;
+        return { initial, rSuffix, iw };
       });
 
-      // 행 분배: 너비 초과 시 다음 행으로
+      // 행 분배: 너비 초과 시 다음 행으로 (반복 아이템은 GAP 2배 적용)
       const allRows = [];
       let curRow = [], curW = 0;
       for (const item of allItems) {
-        const addW = item.iw + (curRow.length > 0 ? ARR_W + GAP * 2 : 0);
+        const g = item.rSuffix ? GAP * 2 : GAP;
+        const addW = item.iw + (curRow.length > 0 ? ARR_W + g * 2 : 0);
         if (curRow.length > 0 && curW + addW > AVAIL_W) {
           allRows.push(curRow);
           curRow = [item];
           curW   = item.iw;
         } else {
-          if (curRow.length > 0) curW += ARR_W + GAP * 2;
+          if (curRow.length > 0) curW += ARR_W + g * 2;
           curRow.push(item);
           curW += item.iw;
         }
       }
       if (curRow.length > 0) allRows.push(curRow);
 
-      // 최대 2행만 표시
-      const rows         = allRows.slice(0, 2);
+      // 최대 3행만 표시
+      const rows         = allRows.slice(0, 3);
       const shownCount   = rows.reduce((s, r) => s + r.length, 0);
       const overflowCount = allItems.length - shownCount;
 
@@ -258,29 +260,31 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
           const { initial, rSuffix, iw } = item;
 
           if (rSuffix) {
-            // 메인 글자 크게(26pt), x·숫자는 작게(14pt)
+            // 메인 글자 크게(16pt), x·숫자는 작게(12pt) — wrap 방지
             slide.addText([
-              { text: initial, options: { fontSize: 26, bold: true, color: 'DC2626' } },
-              { text: rSuffix, options: { fontSize: 14, bold: true, color: 'DC2626' } },
-            ], { x: fx, y: iy, w: iw, h: ICON_H, align: 'center', valign: 'middle' });
+              { text: initial, options: { fontSize: 16, bold: true, color: 'DC2626' } },
+              { text: rSuffix, options: { fontSize: 12, bold: true, color: 'DC2626' } },
+            ], { x: fx, y: iy, w: iw, h: ICON_H, align: 'center', valign: 'middle', wrap: false });
           } else {
             slide.addText(initial, {
               x: fx, y: iy, w: iw, h: ICON_H,
-              fontSize: 26, bold: true, color: 'DC2626',
+              fontSize: 16, bold: true, color: 'DC2626',
               align: 'center', valign: 'middle', wrap: false,
             });
           }
 
-          fx += iw + GAP;
+          const g = rSuffix ? GAP * 2 : GAP;
+          fx += iw + g;
 
           // 화살표: 행 마지막 아이템 제외
           if (fi < rowItems.length - 1) {
             slide.addText('→', {
               x: fx, y: iy, w: ARR_W, h: ICON_H,
-              fontSize: 16, bold: true, color: 'DC2626',
+              fontSize: 13, bold: true, color: 'DC2626',
               align: 'center', valign: 'middle',
+              fontFace: 'Noto Sans KR',
             });
-            fx += ARR_W + GAP;
+            fx += ARR_W + g;
           }
         });
       });
@@ -292,24 +296,25 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
         const iy = BADGE_Y + lastRi * (ICON_H + ROW_GAP);
         let fx = START_X;
         lastRow.forEach((item, fi) => {
-          fx += item.iw + GAP;
-          if (fi < lastRow.length - 1) fx += ARR_W + GAP;
+          const g = item.rSuffix ? GAP * 2 : GAP;
+          fx += item.iw + g;
+          if (fi < lastRow.length - 1) fx += ARR_W + g;
         });
         slide.addText(`+${overflowCount}`, {
-          x: fx, y: iy, w: 0.42, h: ICON_H,
-          fontSize: 18, bold: true, color: 'DC2626', align: 'left', valign: 'middle',
+          x: fx, y: iy, w: 0.35, h: ICON_H,
+          fontSize: 14, bold: true, color: 'DC2626', align: 'left', valign: 'middle',
         });
       }
     }
 
-    // ── ④ 코멘트: 슬라이드 최하단, 우측 정렬, 흐름 아이콘과 동일 폰트(26pt) ──
+    // ── ④ 코멘트: 슬라이드 최하단, 우측 정렬 (12pt = 미리보기 26px × 0.75 보정) ──
     if (song.comment && song.comment.trim()) {
-      const COMMENT_H = 0.58;                       // 26pt 1~2줄 수용
+      const COMMENT_H = 1.2;                         // 20pt 최대 3줄 수용
       const COMMENT_Y = 10.0 - COMMENT_H - 0.04;   // 슬라이드 바닥 밀착
       slide.addText(song.comment.trim(), {
         x: IMG_X, y: COMMENT_Y, w: IMG_W - 0.08, h: COMMENT_H,
-        fontSize: 26, bold: true, color: 'DC2626',
-        align: 'right', valign: 'bottom',
+        fontSize: 12, bold: true, color: 'DC2626',
+        align: 'left', valign: 'bottom',
         wrap: true,
       });
     }

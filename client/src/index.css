@@ -5,7 +5,7 @@
 @layer base {
   body {
     @apply antialiased;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+    font-family: 'Noto Sans KR', sans-serif;
   }
   /* 다크 모드 (기본) */
   html.dark body {
@@ -144,6 +144,13 @@ html:not(.dark) .form-inner-section {
   background-color: transparent;
   border-color: #E2E8F0;
 }
+
+/* 프리셋 카테고리 뱃지 / 프리셋 불러오기 버튼 — 라이트 모드 인디고 재정의 */
+html:not(.dark) .bg-indigo-900\/40  { background-color: #EEF2FF; }
+html:not(.dark) .bg-indigo-900\/50  { background-color: #EEF2FF; }
+html:not(.dark) .text-indigo-300    { color: #4338CA; }
+html:not(.dark) .border-indigo-800  { border-color: #A5B4FC; }
+html:not(.dark) .hover\:bg-indigo-800\/50:hover { background-color: #E0E7FF; }
 
 /* ────────────────────────────────────────────────────────────
    공통 스크롤바 스타일
