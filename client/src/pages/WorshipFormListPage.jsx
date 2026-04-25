@@ -6,6 +6,28 @@ import api from '../api/client'
 import { useSettingsStore } from '../store/settingsStore'
 import { usePermission } from '../hooks/usePermission'
 
+// 검색 키워드를 텍스트 내에서 찾아 노란 배경으로 하이라이트
+function Highlight({ text, query }) {
+  if (!query || !text) return <>{text}</>
+  const q = query.toLowerCase()
+  const parts = []
+  let src = text.toLowerCase()
+  let lastIdx = 0
+  let key = 0
+  let idx
+  while ((idx = src.indexOf(q, lastIdx)) !== -1) {
+    if (idx > lastIdx) parts.push(<span key={key++}>{text.slice(lastIdx, idx)}</span>)
+    parts.push(
+      <mark key={key++} className="bg-yellow-400/30 text-red-500 rounded-sm not-italic">
+        {text.slice(idx, idx + q.length)}
+      </mark>
+    )
+    lastIdx = idx + q.length
+  }
+  if (lastIdx < text.length) parts.push(<span key={key++}>{text.slice(lastIdx)}</span>)
+  return <>{parts}</>
+}
+
 export default function WorshipFormListPage() {
   const navigate = useNavigate()
   const { defaultDenominationId } = useSettingsStore()
@@ -176,13 +198,17 @@ export default function WorshipFormListPage() {
                 <div className="flex-1 min-w-0">
                   {/* 카테고리 + 곡 수 */}
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                    <span className="font-semibold text-white text-sm">{form.category_name}</span>
+                    <span className="font-semibold text-white text-sm">
+                      <Highlight text={form.category_name} query={searchQuery.trim()} />
+                    </span>
                     <span className="flex items-center gap-1 text-xs text-gray-500">
                       <Music size={11} />
                       {form.song_count}곡
                     </span>
                     {form.notes && (
-                      <span className="text-xs text-gray-600 truncate hidden sm:inline max-w-xs">{form.notes}</span>
+                      <span className="text-xs text-gray-600 truncate hidden sm:inline max-w-xs">
+                        <Highlight text={form.notes} query={searchQuery.trim()} />
+                      </span>
                     )}
                   </div>
                   {/* 인도자 */}
@@ -190,7 +216,7 @@ export default function WorshipFormListPage() {
                     <div className="flex items-center gap-1.5 mb-1">
                       <User size={10} className="text-gray-600 flex-shrink-0" />
                       <span className="text-xs text-gray-400 truncate">
-                        {form.leader_names.join(' · ')}
+                        <Highlight text={form.leader_names.join(' · ')} query={searchQuery.trim()} />
                       </span>
                     </div>
                   )}
@@ -199,7 +225,8 @@ export default function WorshipFormListPage() {
                     <div className="flex flex-wrap gap-x-2 gap-y-0.5">
                       {form.song_titles.map((title, idx) => (
                         <span key={idx} className="text-xs text-gray-500">
-                          <span className="text-gray-600 mr-0.5">{idx + 1}.</span>{title}
+                          <span className="text-gray-600 mr-0.5">{idx + 1}.</span>
+                          <Highlight text={title} query={searchQuery.trim()} />
                         </span>
                       ))}
                     </div>
