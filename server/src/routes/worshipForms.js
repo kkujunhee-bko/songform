@@ -94,17 +94,23 @@ router.post('/', asyncHandler(async (req, res) => {
 
   for (let i = 0; i < songs.length; i++) {
     const { song_id, song_title, performance_key = 'C', semitone_adjustment = 0,
-            form_flow = [], sheet_music_url, sheet_music_snapshot, comment } = songs[i];
+            form_flow = [], sheet_music_url, sheet_music_snapshot, comment,
+            bpm, keyboard1_sound_no, keyboard1_sound_name,
+            keyboard2_sound_no, keyboard2_sound_name, play_style } = songs[i];
     if (!song_title) continue;
     await query(
       `INSERT INTO worship_form_songs
          (form_id, song_id, song_title, sort_order, performance_key, semitone_adjustment,
-          form_flow, sheet_music_url, sheet_music_snapshot, comment)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          form_flow, sheet_music_url, sheet_music_snapshot, comment,
+          bpm, keyboard1_sound_no, keyboard1_sound_name,
+          keyboard2_sound_no, keyboard2_sound_name, play_style)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
       [form.id, song_id || null, song_title, i, performance_key, semitone_adjustment,
        JSON.stringify(form_flow), sheet_music_url || null,
        sheet_music_snapshot ? JSON.stringify(sheet_music_snapshot) : null,
-       comment || null]
+       comment || null,
+       bpm || null, keyboard1_sound_no || null, keyboard1_sound_name || null,
+       keyboard2_sound_no || null, keyboard2_sound_name || null, play_style || null]
     );
     if (!song_id && song_title) {
       const ex = await query('SELECT id FROM songs WHERE title ILIKE $1 LIMIT 1', [song_title]);
@@ -155,17 +161,23 @@ router.put('/:id', asyncHandler(async (req, res) => {
     await query('DELETE FROM worship_form_songs WHERE form_id = $1', [id]);
     for (let i = 0; i < songs.length; i++) {
       const { song_id, song_title, performance_key = 'C', semitone_adjustment = 0,
-              form_flow = [], sheet_music_url, sheet_music_snapshot, comment } = songs[i];
+              form_flow = [], sheet_music_url, sheet_music_snapshot, comment,
+              bpm, keyboard1_sound_no, keyboard1_sound_name,
+              keyboard2_sound_no, keyboard2_sound_name, play_style } = songs[i];
       if (!song_title) continue;
       await query(
         `INSERT INTO worship_form_songs
            (form_id, song_id, song_title, sort_order, performance_key, semitone_adjustment,
-            form_flow, sheet_music_url, sheet_music_snapshot, comment)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            form_flow, sheet_music_url, sheet_music_snapshot, comment,
+            bpm, keyboard1_sound_no, keyboard1_sound_name,
+            keyboard2_sound_no, keyboard2_sound_name, play_style)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
         [id, song_id || null, song_title, i, performance_key, semitone_adjustment,
          JSON.stringify(form_flow), sheet_music_url || null,
          sheet_music_snapshot ? JSON.stringify(sheet_music_snapshot) : null,
-         comment || null]
+         comment || null,
+         bpm || null, keyboard1_sound_no || null, keyboard1_sound_name || null,
+         keyboard2_sound_no || null, keyboard2_sound_name || null, play_style || null]
       );
     }
   }

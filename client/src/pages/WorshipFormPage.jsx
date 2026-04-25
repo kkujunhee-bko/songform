@@ -24,6 +24,12 @@ const DEFAULT_SONG = () => ({
   sheet_music_url: null,
   sheet_music_snapshot: null,
   comment: '',
+  bpm: '',
+  keyboard1_sound_no: '',
+  keyboard1_sound_name: '',
+  keyboard2_sound_no: '',
+  keyboard2_sound_name: '',
+  play_style: '',
 })
 
 /** 현재 날짜를 로컬 시간 기준 'YYYY-MM-DD' 문자열로 반환 (UTC 변환 없이 timezone 안전) */
@@ -248,6 +254,12 @@ export default function WorshipFormPage() {
         sheet_music_url: s.sheet_music_url,
         sheet_music_snapshot: s.sheet_music_snapshot,
         comment: s.comment || '',
+        bpm: s.bpm || null,
+        keyboard1_sound_no: s.keyboard1_sound_no || '',
+        keyboard1_sound_name: s.keyboard1_sound_name || '',
+        keyboard2_sound_no: s.keyboard2_sound_no || '',
+        keyboard2_sound_name: s.keyboard2_sound_name || '',
+        play_style: s.play_style || '',
       }))
 
   const handleSave = async () => {

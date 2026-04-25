@@ -195,12 +195,12 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
 
     slide.addShape(pptx.ShapeType.roundRect, {
       x: BADGE_X, y: BADGE_Y, w: BADGE_W, h: BADGE_H,
-      fill: { color: '2563EB' },
-      line: { color: '2563EB', pt: 0 },
+      fill: { color: 'FFFFFF' },
+      line: { color: '4B5563', pt: 1.5 },
     });
     slide.addText(`${si + 1}`, {
       x: BADGE_X, y: BADGE_Y, w: BADGE_W, h: BADGE_H,
-      fontSize: 15, bold: true, color: 'FFFFFF',
+      fontSize: 15, bold: true, color: '000000',
       align: 'center', valign: 'middle',
     });
 

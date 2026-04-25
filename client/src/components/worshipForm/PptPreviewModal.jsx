@@ -134,9 +134,9 @@ function SongSlide({ song, index }) {
         </div>
       )}
 
-      {/* 번호 뱃지: 좌상단 고정 */}
-      <div style={{ position: 'absolute', left: BADGE_X, top: BADGE_Y, width: BADGE_W, height: BADGE_H, backgroundColor: '#2563EB', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-        <span style={{ fontSize: 20, fontWeight: 'bold', color: '#FFFFFF' }}>{index + 1}</span>
+      {/* 번호 뱃지: 좌상단 고정, 흰 배경 + 진한 회색 테두리 */}
+      <div style={{ position: 'absolute', left: BADGE_X, top: BADGE_Y, width: BADGE_W, height: BADGE_H, background: 'transparent', border: '2px solid #4B5563', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+        <span style={{ fontSize: 20, fontWeight: 'bold', color: '#000000' }}>{index + 1}</span>
       </div>
 
       {/* 송폼 흐름 아이콘: 뱃지 우측, 최대 2행

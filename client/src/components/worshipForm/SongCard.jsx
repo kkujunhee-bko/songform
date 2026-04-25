@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GripVertical, Trash2, Copy, Music, Search, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
+import { GripVertical, Trash2, Copy, Music, Search, ChevronDown, ChevronUp, MessageSquare, Drum } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import KeySelector from './KeySelector'
@@ -188,6 +188,79 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
             onChange={(flow) => onUpdate({ form_flow: flow })}
             enablePreset
           />
+
+          {/* 연주 정보 */}
+          <div className="space-y-2">
+            <label className="label flex items-center gap-1.5">
+              <Drum size={11} />
+              연주 정보
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {/* BPM */}
+              <div>
+                <span className="text-xs text-gray-500 mb-1 block">연주 속도(BPM)</span>
+                <input
+                  type="number"
+                  className="input"
+                  placeholder="예) 120"
+                  min={1} max={300}
+                  value={song.bpm || ''}
+                  onChange={e => onUpdate({ bpm: e.target.value ? Number(e.target.value) : null })}
+                />
+              </div>
+              {/* 연주 스타일 */}
+              <div>
+                <span className="text-xs text-gray-500 mb-1 block">연주 스타일</span>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="예) 발라드, 팝, 록..."
+                  value={song.play_style || ''}
+                  onChange={e => onUpdate({ play_style: e.target.value })}
+                />
+              </div>
+            </div>
+            {/* 건반1 */}
+            <div>
+              <span className="text-xs text-gray-500 mb-1 block">건반 1</span>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="input w-24 flex-shrink-0"
+                  placeholder="음원번호"
+                  value={song.keyboard1_sound_no || ''}
+                  onChange={e => onUpdate({ keyboard1_sound_no: e.target.value })}
+                />
+                <input
+                  type="text"
+                  className="input flex-1"
+                  placeholder="음원명"
+                  value={song.keyboard1_sound_name || ''}
+                  onChange={e => onUpdate({ keyboard1_sound_name: e.target.value })}
+                />
+              </div>
+            </div>
+            {/* 건반2 */}
+            <div>
+              <span className="text-xs text-gray-500 mb-1 block">건반 2</span>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="input w-24 flex-shrink-0"
+                  placeholder="음원번호"
+                  value={song.keyboard2_sound_no || ''}
+                  onChange={e => onUpdate({ keyboard2_sound_no: e.target.value })}
+                />
+                <input
+                  type="text"
+                  className="input flex-1"
+                  placeholder="음원명"
+                  value={song.keyboard2_sound_name || ''}
+                  onChange={e => onUpdate({ keyboard2_sound_name: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
 
           {/* 송폼 코멘트 */}
           <div>
