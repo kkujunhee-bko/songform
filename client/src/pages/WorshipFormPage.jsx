@@ -332,37 +332,43 @@ export default function WorshipFormPage() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       {/* 페이지 헤더 */}
-      <div className="flex items-center gap-4 mb-6">
-        <button className="btn btn-ghost p-2" onClick={() => navigate('/')}>
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold text-white">{isEdit ? '예배 송폼 편집' : '새 예배 송폼'}</h1>
+      <div className="mb-6">
+        <div className="flex items-center gap-3">
+          <button className="btn btn-ghost p-2 shrink-0" onClick={() => navigate('/')}>
+            <ArrowLeft size={18} />
+          </button>
+          <h1 className="text-xl sm:text-2xl font-bold text-white truncate flex-1">
+            {isEdit ? '예배 송폼 편집' : '새 예배 송폼'}
+          </h1>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              className="btn hover:bg-gray-200 border border-gray-600 hover:border-gray-400 bg-transparent text-gray-300 hover:text-white"
+              onClick={() => setShowPreview(true)}
+              title="PPT 미리보기"
+            >
+              <Eye size={15} />
+              <span className="hidden sm:inline">미리보기</span>
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={handleExport}
+              disabled={exporting}
+              title="PPT 내보내기"
+            >
+              {exporting ? <Loader size={16} className="animate-spin" /> : <FileDown size={16} />}
+              <span className="hidden sm:inline">PPT 내보내기</span>
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleSave}
+              disabled={saving}
+              title="저장"
+            >
+              {saving ? <Loader size={16} className="animate-spin" /> : <Save size={16} />}
+              <span className="hidden sm:inline">저장</span>
+            </button>
+          </div>
         </div>
-        <button
-          className="btn hover:bg-gray-200 border border-gray-600 hover:border-gray-400 bg-transparent text-gray-300 hover:text-white"
-          onClick={() => setShowPreview(true)}
-          title="PPT 미리보기"
-        >
-          <Eye size={15} />
-          미리보기
-        </button>
-        <button
-          className="btn btn-secondary"
-          onClick={handleExport}
-          disabled={exporting}
-        >
-          {exporting ? <Loader size={16} className="animate-spin" /> : <FileDown size={16} />}
-          PPT 내보내기
-        </button>
-        <button
-          className="btn btn-primary"
-          onClick={handleSave}
-          disabled={saving}
-        >
-          {saving ? <Loader size={16} className="animate-spin" /> : <Save size={16} />}
-          저장
-        </button>
       </div>
 
       {/* 예배 헤더 정보 */}
@@ -500,31 +506,36 @@ export default function WorshipFormPage() {
       </div>
 
       {/* 하단 저장 버튼 */}
-      <div className="mt-6 flex justify-end gap-3">
-        <button className="btn btn-secondary" onClick={() => navigate('/')}>취소</button>
+      <div className="mt-6 flex justify-end gap-2">
+        <button className="btn btn-secondary shrink-0" onClick={() => navigate('/')} title="취소">
+          <span className="hidden sm:inline">취소</span>
+          <span className="sm:hidden"><ArrowLeft size={16} /></span>
+        </button>
         <button
-          className="btn hover:bg-gray-200 border border-gray-600 hover:border-gray-400 bg-transparent text-gray-300 hover:text-white"
+          className="btn hover:bg-gray-200 border border-gray-600 hover:border-gray-400 bg-transparent text-gray-300 hover:text-white shrink-0"
           onClick={() => setShowPreview(true)}
           title="PPT 미리보기"
         >
           <Eye size={15} />
-          미리보기
+          <span className="hidden sm:inline">미리보기</span>
         </button>
         <button
-          className="btn btn-secondary"
+          className="btn btn-secondary shrink-0"
           onClick={handleExport}
           disabled={exporting}
+          title="PPT 내보내기"
         >
           {exporting ? <Loader size={16} className="animate-spin" /> : <FileDown size={16} />}
-          PPT 내보내기
+          <span className="hidden sm:inline">PPT 내보내기</span>
         </button>
         <button
-          className="btn btn-primary"
+          className="btn btn-primary shrink-0"
           onClick={handleSave}
           disabled={saving}
+          title="저장"
         >
           {saving ? <Loader size={16} className="animate-spin" /> : <Save size={16} />}
-          저장
+          <span className="hidden sm:inline">저장</span>
         </button>
       </div>
 
