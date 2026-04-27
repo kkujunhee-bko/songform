@@ -213,9 +213,9 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
       const START_X = BADGE_X + BADGE_W + 0.10;       // 0.70"
       const AVAIL_W = 7.5 - START_X - 0.10;           // 6.70"
 
-      // initial 글자 수 기준 너비 / rSuffix(x2 등) 추가 너비는 별도 합산
-      const IW_MAP    = [0.13, 0.20, 0.28, 0.35];
-      const SUFFIX_W  = 0.18;  // "x2" 등 2자 rSuffix 전용 여유폭
+      // 글자 종류별 너비(인치): 한글 > 영문 > 숫자/기타
+      const charW  = (ch) => /[가-힣ㄱ-ㅣ]/.test(ch) ? 0.18 : /[A-Za-z]/.test(ch) ? 0.14 : 0.11;
+      const textIw = (text) => Math.max([...text].reduce((s, c) => s + charW(c), 0) + 0.06, 0.15);
 
       // 모든 아이템 계산: V1 같은 이름에서 숫자도 추출
       const allItems = formFlow.map(el => {
@@ -223,8 +223,7 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
         const numPart     = ((el.name || '').match(/\d+/) || [])[0] || '';
         const initial     = firstLetter + numPart;
         const rSuffix     = el.repeat && el.repeat > 1 ? `x${el.repeat}` : '';
-        const baseIw      = IW_MAP[Math.min(initial.length - 1, 3)];
-        const iw          = rSuffix ? baseIw + SUFFIX_W : baseIw;
+        const iw          = textIw(initial) + (rSuffix ? textIw(rSuffix) + 0.02 : 0);
         return { initial, rSuffix, iw };
       });
 
@@ -262,13 +261,14 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
           if (rSuffix) {
             // 메인 글자 크게(16pt), x·숫자는 작게(12pt) — wrap 방지
             slide.addText([
-              { text: initial, options: { fontSize: 16, bold: true, color: 'DC2626' } },
-              { text: rSuffix, options: { fontSize: 12, bold: true, color: 'DC2626' } },
+              { text: initial, options: { fontSize: 16, bold: true, color: 'DC2626', fontFace: 'Noto Sans KR' } },
+              { text: rSuffix, options: { fontSize: 12, bold: true, color: 'DC2626', fontFace: 'Noto Sans KR' } },
             ], { x: fx, y: iy, w: iw, h: ICON_H, align: 'center', valign: 'middle', wrap: false });
           } else {
             slide.addText(initial, {
               x: fx, y: iy, w: iw, h: ICON_H,
               fontSize: 16, bold: true, color: 'DC2626',
+              fontFace: 'Noto Sans KR',
               align: 'center', valign: 'middle', wrap: false,
             });
           }

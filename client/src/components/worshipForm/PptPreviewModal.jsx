@@ -143,10 +143,10 @@ function SongSlide({ song, index }) {
           PPT pt → 미리보기 px 환산: pt × (100 / 72)
           메인 16pt→22px / rSuffix 12pt→17px / 화살표 13pt→18px */}
       {flowItems.length > 0 && (
-        <div style={{ position: 'absolute', left: FLOW_START_X, top: FLOW_Y, right: 10, maxHeight: BADGE_H * 2 + 6, overflow: 'hidden', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px', zIndex: 1 }}>
+        <div style={{ position: 'absolute', left: FLOW_START_X, top: FLOW_Y, right: 10, maxHeight: BADGE_H * 2 + 6, overflow: 'hidden', display: 'flex', flexWrap: 'wrap', alignItems: 'center', alignContent: 'center', rowGap: '2px', zIndex: 1 }}>
           {flowItems.map((item, fi) => (
-            <span key={fi} style={{ display: 'inline-flex', alignItems: 'baseline', fontSize: 22, fontWeight: 'bold', color: '#DC2626', lineHeight: `${BADGE_H}px` }}>
-              {fi > 0 && <span style={{ fontSize: 18, marginRight: 3, marginLeft: 1 }}>→</span>}
+            <span key={fi} style={{ display: 'inline-block', whiteSpace: 'nowrap', fontSize: 22, fontWeight: 'bold', color: '#DC2626', lineHeight: 1.2, verticalAlign: 'middle' }}>
+              {fi > 0 && <span style={{ fontSize: 18, margin: '0 2px' }}>→</span>}
               {item.initial}
               {item.rSuffix && <span style={{ fontSize: 17 }}>{item.rSuffix}</span>}
             </span>
