@@ -13,9 +13,7 @@ function formatDate(dateStr) {
 
 function getFlowItems(formFlow) {
   return (Array.isArray(formFlow) ? formFlow : []).map(el => {
-    const firstLetter = (el.name || '?').charAt(0).toUpperCase()
-    const numPart = ((el.name || '').match(/\d+/) || [])[0] || ''
-    const initial = firstLetter + numPart
+    const initial = (el.name || '?')
     const rSuffix = el.repeat && el.repeat > 1 ? `x${el.repeat}` : ''
     return { initial, rSuffix }
   })

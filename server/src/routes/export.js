@@ -217,13 +217,11 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
       const charW  = (ch) => /[가-힣ㄱ-ㅣ]/.test(ch) ? 0.18 : /[A-Za-z]/.test(ch) ? 0.14 : 0.11;
       const textIw = (text) => Math.max([...text].reduce((s, c) => s + charW(c), 0) + 0.06, 0.15);
 
-      // 모든 아이템 계산: V1 같은 이름에서 숫자도 추출
+      // 모든 아이템 계산: 등록한 이름 그대로 표시
       const allItems = formFlow.map(el => {
-        const firstLetter = (el.name || '?').charAt(0).toUpperCase();
-        const numPart     = ((el.name || '').match(/\d+/) || [])[0] || '';
-        const initial     = firstLetter + numPart;
-        const rSuffix     = el.repeat && el.repeat > 1 ? `x${el.repeat}` : '';
-        const iw          = textIw(initial) + (rSuffix ? textIw(rSuffix) + 0.02 : 0);
+        const initial = (el.name || '?');
+        const rSuffix = el.repeat && el.repeat > 1 ? `x${el.repeat}` : '';
+        const iw      = textIw(initial) + (rSuffix ? textIw(rSuffix) + 0.02 : 0);
         return { initial, rSuffix, iw };
       });
 
