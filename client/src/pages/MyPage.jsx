@@ -108,12 +108,12 @@ export default function MyPage() {
           />
         </div>
         {phoneError && (
-          <div className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-3 py-2">
+          <div className="text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg px-3 py-2">
             {phoneError}
           </div>
         )}
         {phoneSuccess && (
-          <div className="flex items-center gap-2 text-sm text-green-400 bg-green-900/20 border border-green-800 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 rounded-lg px-3 py-2">
             <CheckCircle size={14} />
             휴대폰 번호가 저장되었습니다.
           </div>
@@ -168,12 +168,12 @@ export default function MyPage() {
           />
         </div>
         {pwError && (
-          <div className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-3 py-2">
+          <div className="text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg px-3 py-2">
             {pwError}
           </div>
         )}
         {pwSuccess && (
-          <div className="flex items-center gap-2 text-sm text-green-400 bg-green-900/20 border border-green-800 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800 rounded-lg px-3 py-2">
             <CheckCircle size={14} />
             비밀번호가 변경되었습니다.
           </div>

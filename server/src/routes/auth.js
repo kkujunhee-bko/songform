@@ -42,7 +42,7 @@ router.post('/login', asyncHandler(async (req, res) => {
 
   const payload = {
     id: user.id, email: user.email, name: user.name,
-    role: user.role, theme: user.theme,
+    phone: user.phone || null, role: user.role, theme: user.theme,
   };
   const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES });
 
