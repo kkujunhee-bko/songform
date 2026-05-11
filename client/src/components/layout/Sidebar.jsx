@@ -1,5 +1,5 @@
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
-import { Settings, LogOut, Users, ShieldCheck, Music, Sun, Moon, KeyRound, X, LayoutTemplate } from 'lucide-react'
+import { Settings, LogOut, Users, ShieldCheck, Music, Sun, Moon, KeyRound, X, LayoutTemplate, UserCircle } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { CONFIGURABLE_MENUS } from '../../lib/menuConfig'
 
@@ -170,8 +170,23 @@ export default function Sidebar({ mobileOpen, onClose }) {
         )}
       </nav>
 
-      {/* 하단: 테마 토글 + 로그아웃 */}
+      {/* 하단: 마이페이지 + 테마 토글 + 로그아웃 */}
       <div className="px-2 py-4 border-t border-gray-800 space-y-1 flex-shrink-0">
+        <NavLink
+          to="/my"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors md:justify-center md:px-2 lg:justify-start lg:px-3 ${
+              isActive
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
+            }`
+          }
+          onClick={handleNavClick}
+          title="마이페이지"
+        >
+          <UserCircle size={16} className="flex-shrink-0" />
+          <span className="md:hidden lg:inline">마이페이지</span>
+        </NavLink>
         <button
           type="button"
           onClick={toggleTheme}

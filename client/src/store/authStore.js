@@ -63,6 +63,12 @@ export const useAuthStore = create((set, get) => ({
     set({ user: null, token: null, myPermissions: [] });
   },
 
+  // 프로필 수정 (휴대폰번호 또는 비밀번호)
+  updateProfile: async (data) => {
+    const result = await api.patch('/auth/profile', data);
+    set({ user: { ...useAuthStore.getState().user, ...result.user } });
+  },
+
   // 다크/라이트 모드 토글 (서버에 저장)
   toggleTheme: async () => {
     const { user } = get();

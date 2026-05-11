@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { Music, LogIn } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useSettingsStore } from '../store/settingsStore'
@@ -84,9 +84,17 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="text-center text-xs text-gray-600 mt-6">
-          계정이 없으신가요? 관리자에게 문의하세요.
-        </p>
+        <div className="flex flex-col items-center gap-2 mt-6">
+          <Link
+            to="/forgot-password"
+            className="text-xs text-gray-500 hover:text-blue-400 transition-colors"
+          >
+            비밀번호를 잊으셨나요?
+          </Link>
+          <p className="text-xs text-gray-600">
+            계정이 없으신가요? 관리자에게 문의하세요.
+          </p>
+        </div>
       </div>
     </div>
   )
