@@ -5,6 +5,16 @@ const jwt = require('jsonwebtoken');
 const { query } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { requireAuth, JWT_SECRET } = require('../middleware/authMiddleware');
+const { sendPasswordResetEmail } = require('../utils/mailer');
+
+function generateTempPassword() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let result = '';
+  for (let i = 0; i < 6; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return result;
+}
 
 const JWT_EXPIRES = '7d';
 
@@ -62,6 +72,95 @@ router.patch('/theme', requireAuth, asyncHandler(async (req, res) => {
     [theme, req.user.id]
   );
   res.json({ theme });
+}));
+
+// PATCH /api/auth/profile  — 휴대폰번호 또는 비밀번호 수정 (로그인 필요)
+router.patch('/profile', requireAuth, asyncHandler(async (req, res) => {
+  const { phone, currentPassword, newPassword } = req.body;
+
+  const result = await query(
+    'SELECT * FROM users WHERE id = $1 AND is_active = true',
+    [req.user.id]
+  );
+  const user = result.rows[0];
+  if (!user) return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+
+  const updates = [];
+  const values = [];
+
+  if (phone !== undefined) {
+    updates.push(`phone = $${values.length + 1}`);
+    values.push(phone.trim() || null);
+  }
+
+  if (newPassword) {
+    if (!currentPassword) {
+      return res.status(400).json({ error: '현재 비밀번호를 입력해주세요.' });
+    }
+    const valid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!valid) {
+      return res.status(400).json({ error: '현재 비밀번호가 올바르지 않습니다.' });
+    }
+    if (newPassword.length < 4) {
+      return res.status(400).json({ error: '새 비밀번호는 4자 이상이어야 합니다.' });
+    }
+    const hash = await bcrypt.hash(newPassword, 10);
+    updates.push(`password_hash = $${values.length + 1}`);
+    values.push(hash);
+  }
+
+  if (updates.length === 0) {
+    return res.status(400).json({ error: '수정할 내용이 없습니다.' });
+  }
+
+  updates.push(`updated_at = NOW()`);
+  values.push(req.user.id);
+
+  await query(
+    `UPDATE users SET ${updates.join(', ')} WHERE id = $${values.length}`,
+    values
+  );
+
+  const updated = await query(
+    'SELECT id, name, email, phone, role, theme FROM users WHERE id = $1',
+    [req.user.id]
+  );
+  res.json({ user: updated.rows[0] });
+}));
+
+// POST /api/auth/forgot-password  — 임시 비밀번호 발송 (공개)
+router.post('/forgot-password', asyncHandler(async (req, res) => {
+  const { name, email } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ error: '이름과 이메일을 입력해주세요.' });
+  }
+
+  const result = await query(
+    'SELECT * FROM users WHERE email = $1 AND name = $2 AND is_active = true',
+    [email.trim(), name.trim()]
+  );
+  const user = result.rows[0];
+
+  // 계정이 없어도 동일한 응답 (보안상 존재 여부 노출 방지)
+  if (!user) {
+    return res.json({ message: '입력하신 정보와 일치하는 계정이 있을 경우 임시 비밀번호를 발송합니다.' });
+  }
+
+  const tempPassword = generateTempPassword();
+  const hash = await bcrypt.hash(tempPassword, 10);
+
+  await query(
+    'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+    [hash, user.id]
+  );
+
+  await sendPasswordResetEmail({
+    toEmail: user.email,
+    toName: user.name,
+    newPassword: tempPassword,
+  });
+
+  res.json({ message: '임시 비밀번호를 이메일로 발송했습니다. 로그인 후 비밀번호를 변경해 주세요.' });
 }));
 
 module.exports = router;

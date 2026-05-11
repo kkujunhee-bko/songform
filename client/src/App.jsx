@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom'
 import AppShell from './components/layout/AppShell'
 import LoginPage from './pages/LoginPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import MyPage from './pages/MyPage'
 import WorshipFormListPage from './pages/WorshipFormListPage'
 import WorshipFormPage from './pages/WorshipFormPage'
 import SettingsPage from './pages/SettingsPage'
@@ -60,6 +62,7 @@ export default function App() {
       <Routes>
         {/* 공개 */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
         {/* 보호된 레이아웃 */}
         <Route element={<ProtectedLayout />}>
@@ -72,6 +75,7 @@ export default function App() {
           <Route path="/presets/:id/edit"  element={<AdminRoute><PresetEditPage /></AdminRoute>} />
 
           {/* 일반 + 관리자 공통 */}
+          <Route path="/my" element={<MyPage />} />
           <Route index element={<WorshipFormListPage />} />
           <Route path="/forms/new"       element={<WorshipFormPage key="new" />} />
           <Route path="/forms/:id/edit"  element={<EditFormRoute />} />
