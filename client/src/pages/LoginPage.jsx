@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Music, LogIn } from 'lucide-react'
+import { Music, LogIn, KeyRound } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useSettingsStore } from '../store/settingsStore'
 
@@ -77,20 +77,22 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || !email || !password}
-            className="btn btn-primary w-full justify-center py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn btn-primary w-full justify-center py-2.5 border border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <LogIn size={16} />
             {loading ? '로그인 중...' : '로그인'}
           </button>
+
+          <Link
+            to="/forgot-password"
+            className="btn w-full justify-center py-2.5 border border-blue-500 text-blue-500 hover:bg-blue-500/10 transition-colors"
+          >
+            <KeyRound size={16} />
+            비밀번호 찾기
+          </Link>
         </form>
 
         <div className="flex flex-col items-center gap-2 mt-6">
-          <Link
-            to="/forgot-password"
-            className="text-xs text-gray-500 hover:text-blue-400 transition-colors"
-          >
-            비밀번호를 잊으셨나요?
-          </Link>
           <p className="text-xs text-gray-600">
             계정이 없으신가요? 관리자에게 문의하세요.
           </p>

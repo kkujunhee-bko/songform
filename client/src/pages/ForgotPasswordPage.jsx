@@ -52,55 +52,58 @@ export default function ForgotPasswordPage() {
             </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="card space-y-4">
-            <p className="text-xs text-gray-400">
-              가입 시 등록한 이름과 이메일을 입력하시면 임시 비밀번호를 발송해 드립니다.
-            </p>
-            <div>
-              <label className="label">이름</label>
-              <input
-                type="text"
-                className="input"
-                placeholder="가입 시 등록한 이름"
-                value={name}
-                onChange={e => { setName(e.target.value); setError('') }}
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="label">아이디 (이메일)</label>
-              <input
-                type="text"
-                className="input"
-                placeholder="가입 시 등록한 이메일"
-                value={email}
-                onChange={e => { setEmail(e.target.value); setError('') }}
-              />
-            </div>
-
-            {error && (
-              <div className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-3 py-2">
-                {error}
+          <>
+            <form onSubmit={handleSubmit} className="card space-y-4">
+              <div>
+                <label className="label">이름</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="가입 시 등록한 이름"
+                  value={name}
+                  onChange={e => { setName(e.target.value); setError('') }}
+                  autoFocus
+                />
               </div>
-            )}
+              <div>
+                <label className="label">아이디 (이메일)</label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="가입 시 등록한 이메일"
+                  value={email}
+                  onChange={e => { setEmail(e.target.value); setError('') }}
+                />
+              </div>
 
-            <button
-              type="submit"
-              disabled={loading || !name || !email}
-              className="btn btn-primary w-full justify-center py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Mail size={16} />
-              {loading ? '발송 중...' : '임시 비밀번호 발송'}
-            </button>
+              {error && (
+                <div className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-3 py-2">
+                  {error}
+                </div>
+              )}
 
-            <Link
-              to="/login"
-              className="flex items-center justify-center gap-1.5 text-sm text-gray-500 hover:text-gray-300 transition-colors py-1"
-            >
-              <ArrowLeft size={13} />
-              로그인으로 돌아가기
-            </Link>
-          </form>
+              <button
+                type="submit"
+                disabled={loading || !name || !email}
+                className="btn btn-primary w-full justify-center py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Mail size={16} />
+                {loading ? '발송 중...' : '임시 비밀번호 발송'}
+              </button>
+
+              <Link
+                to="/login"
+                className="btn w-full justify-center py-2.5 border border-blue-500 text-blue-500 hover:bg-blue-500/10 transition-colors"
+              >
+                <ArrowLeft size={16} />
+                로그인으로 돌아가기
+              </Link>
+            </form>
+
+            <p className="text-xs text-gray-600 text-left mt-6">
+              회원 이름과 이메일 입력 후 [임시 비밀번호 발송] 버튼을 클릭하면 이메일로 임시 비밀번호를 발송해 드립니다.
+            </p>
+          </>
         )}
       </div>
     </div>
