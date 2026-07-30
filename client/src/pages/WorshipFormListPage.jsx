@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router-dom'
-import { Plus, FileDown, Pencil, Trash2, Music, Search, X, User } from 'lucide-react'
+import { Plus, FileDown, Pencil, Trash2, Music, Search, X, User, ChevronDown, Eye, Loader } from 'lucide-react'
 import api from '../api/client'
 import { useSettingsStore } from '../store/settingsStore'
 import { usePermission } from '../hooks/usePermission'
+import PptPreviewModal from '../components/worshipForm/PptPreviewModal'
 
 // 검색 키워드를 텍스트 내에서 찾아 노란 배경으로 하이라이트
 function Highlight({ text, query }) {
@@ -28,11 +29,68 @@ function Highlight({ text, query }) {
   return <>{parts}</>
 }
 
+function MultiSelect({ label, options, selected, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const toggle = (val) =>
+    onChange(selected.includes(val) ? selected.filter(v => v !== val) : [...selected, val])
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        className={`input flex items-center justify-between gap-2 text-left w-full cursor-pointer ${selected.length > 0 ? 'border-blue-500/50' : ''}`}
+        onClick={() => setOpen(o => !o)}
+      >
+        <span className={`text-sm truncate ${selected.length > 0 ? 'text-white' : 'text-gray-500'}`}>
+          {selected.length === 0 ? label : `${label} (${selected.length})`}
+        </span>
+        <ChevronDown size={14} className={`text-gray-500 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && options.length > 0 && (
+        <div className="absolute z-20 top-full mt-1 w-full min-w-max bg-gray-900 border border-gray-700 rounded-lg shadow-xl py-1 max-h-56 overflow-y-auto">
+          {options.map(opt => (
+            <label key={opt} className="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-800 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(opt)}
+                onChange={() => toggle(opt)}
+                className="accent-blue-500 w-3.5 h-3.5 flex-shrink-0"
+              />
+              <span className="text-sm text-gray-300">{opt}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function WorshipFormListPage() {
   const navigate = useNavigate()
-  const { defaultDenominationId } = useSettingsStore()
+  const { defaultDenominationId, categories } = useSettingsStore()
   const perm = usePermission('forms_list')
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategories, setSelectedCategories] = useState([])
+  const [selectedLeaders, setSelectedLeaders] = useState([])
+  const [members, setMembers] = useState([])
+  const [previewFormId, setPreviewFormId] = useState(null)
+  const [previewData, setPreviewData] = useState(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewExporting, setPreviewExporting] = useState(false)
+
+  useEffect(() => {
+    api.get('/members').then(setMembers).catch(() => {})
+  }, [])
 
   const { data: forms = [], isLoading, refetch } = useQuery({
     queryKey: ['worship-forms', defaultDenominationId],
@@ -74,6 +132,63 @@ export default function WorshipFormListPage() {
     }
   }
 
+  const handlePreview = async (formId, e) => {
+    e.stopPropagation()
+    setPreviewLoading(true)
+    setPreviewFormId(formId)
+    try {
+      const data = await api.get(`/worship-forms/${formId}`)
+      setPreviewData({
+        formData: {
+          worship_date: (data.worship_date || '').slice(0, 10),
+          denomination_id: data.denomination_id,
+          category_id: data.category_id,
+          notes: data.notes || '',
+        },
+        songs: (data.songs || []).map(s => ({
+          ...s,
+          uid: `song_${s.id}_${Date.now()}`,
+          form_flow: Array.isArray(s.form_flow) ? s.form_flow : JSON.parse(s.form_flow || '[]'),
+        })),
+        season: data.liturgical_season_name
+          ? { name: data.liturgical_season_name, color: data.liturgical_season_color || '#6366F1' }
+          : null,
+        leaderIds: Array.isArray(data.leader_ids) ? data.leader_ids : [],
+      })
+    } catch (err) {
+      alert('미리보기 로드 실패: ' + err.message)
+      setPreviewFormId(null)
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  const handlePreviewExport = async () => {
+    if (!previewFormId) return
+    setPreviewExporting(true)
+    try {
+      const token = localStorage.getItem('songform-token')
+      const response = await fetch(`/api/export/pptx/${previewFormId}`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!response.ok) throw new Error('내보내기 실패')
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      const cd = response.headers.get('content-disposition') || ''
+      const match = cd.match(/filename\*=UTF-8''(.+)/)
+      a.download = match ? decodeURIComponent(match[1]) : `worship_form_${previewFormId}.pptx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      alert('PPT 내보내기 실패: ' + err.message)
+    } finally {
+      setPreviewExporting(false)
+    }
+  }
+
   // 'YYYY-MM-DD' → local midnight 파싱
   const parseDateStr = (dateStr) => new Date(dateStr + 'T00:00:00')
 
@@ -85,25 +200,46 @@ export default function WorshipFormListPage() {
     return seasonName ? `${dayLabel}(${seasonName})` : dayLabel
   }
 
-  // 검색 필터링 (날짜·카테고리·절기·곡제목·메모 전체 대상)
+  const categoryOptions = useMemo(
+    () => [...new Set(forms.map(f => f.category_name).filter(Boolean))].sort(),
+    [forms]
+  )
+  const leaderOptions = useMemo(
+    () => [...new Set(forms.flatMap(f => Array.isArray(f.leader_names) ? f.leader_names : []).filter(Boolean))].sort(),
+    [forms]
+  )
+
+  const hasFilters = searchQuery || selectedCategories.length > 0 || selectedLeaders.length > 0
+  const clearFilters = () => { setSearchQuery(''); setSelectedCategories([]); setSelectedLeaders([]) }
+
+  // 검색 필터링 (예배 구분·인도자 다중선택 + 텍스트 검색)
   const filteredForms = useMemo(() => {
+    let result = forms
+    if (selectedCategories.length > 0)
+      result = result.filter(f => selectedCategories.includes(f.category_name))
+    if (selectedLeaders.length > 0)
+      result = result.filter(f =>
+        Array.isArray(f.leader_names) && f.leader_names.some(l => selectedLeaders.includes(l))
+      )
     const q = searchQuery.trim().toLowerCase()
-    if (!q) return forms
-    return forms.filter(form => {
-      const d = parseDateStr(form.worship_date)
-      const dateText = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`
-      const targets = [
-        dateText,
-        form.worship_date,
-        form.category_name || '',
-        form.liturgical_season_name || '',
-        form.notes || '',
-        ...(Array.isArray(form.song_titles)  ? form.song_titles  : []),
-        ...(Array.isArray(form.leader_names) ? form.leader_names : []),
-      ]
-      return targets.some(t => t.toLowerCase().includes(q))
-    })
-  }, [forms, searchQuery])
+    if (q) {
+      result = result.filter(form => {
+        const d = parseDateStr(form.worship_date)
+        const dateText = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`
+        const targets = [
+          dateText,
+          form.worship_date,
+          form.category_name || '',
+          form.liturgical_season_name || '',
+          form.notes || '',
+          ...(Array.isArray(form.song_titles)  ? form.song_titles  : []),
+          ...(Array.isArray(form.leader_names) ? form.leader_names : []),
+        ]
+        return targets.some(t => t.toLowerCase().includes(q))
+      })
+    }
+    return result
+  }, [forms, selectedCategories, selectedLeaders, searchQuery])
 
   if (isLoading) {
     return (
@@ -121,7 +257,7 @@ export default function WorshipFormListPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-white">예배 송폼 목록</h1>
           <p className="text-sm text-gray-500 mt-1">
             총 {forms.length}개
-            {searchQuery && ` · 검색결과 ${filteredForms.length}개`}
+            {hasFilters && ` · 검색결과 ${filteredForms.length}개`}
           </p>
         </div>
         {perm.can_create && (
@@ -132,24 +268,42 @@ export default function WorshipFormListPage() {
         )}
       </div>
 
-      {/* 검색바 */}
-      <div className="relative mb-5">
-        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
-        <input
-          type="text"
-          className="input pl-9 pr-9"
-          placeholder="날짜, 카테고리, 곡 제목, 절기, 메모로 검색..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-        />
-        {searchQuery && (
-          <button
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
-            onClick={() => setSearchQuery('')}
-          >
-            <X size={15} />
-          </button>
-        )}
+      {/* 필터 영역 */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-5">
+        <div className="sm:w-44">
+          <MultiSelect
+            label="예배 구분"
+            options={categoryOptions}
+            selected={selectedCategories}
+            onChange={setSelectedCategories}
+          />
+        </div>
+        <div className="sm:w-44">
+          <MultiSelect
+            label="인도자"
+            options={leaderOptions}
+            selected={selectedLeaders}
+            onChange={setSelectedLeaders}
+          />
+        </div>
+        <div className="relative flex-1">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" />
+          <input
+            type="text"
+            className="input pl-9 pr-9 w-full"
+            placeholder="날짜, 곡 제목, 절기, 메모로 검색..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+              onClick={() => setSearchQuery('')}
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 목록 */}
@@ -166,9 +320,9 @@ export default function WorshipFormListPage() {
       ) : filteredForms.length === 0 ? (
         <div className="text-center py-16">
           <Search size={40} className="mx-auto text-gray-700 mb-3" />
-          <p className="text-gray-500 mb-2">"{searchQuery}"에 대한 검색 결과가 없습니다.</p>
-          <button className="text-sm text-blue-400 hover:text-blue-300" onClick={() => setSearchQuery('')}>
-            검색 초기화
+          <p className="text-gray-500 mb-2">검색 결과가 없습니다.</p>
+          <button className="text-sm text-blue-400 hover:text-blue-300" onClick={clearFilters}>
+            필터 초기화
           </button>
         </div>
       ) : (
@@ -237,6 +391,15 @@ export default function WorshipFormListPage() {
                 <div className="hidden sm:flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                   <button
                     className="btn btn-ghost p-2"
+                    onClick={(e) => handlePreview(form.id, e)}
+                    title="PPT 미리보기"
+                  >
+                    {previewLoading && previewFormId === form.id
+                      ? <Loader size={16} className="animate-spin" />
+                      : <Eye size={16} />}
+                  </button>
+                  <button
+                    className="btn btn-ghost p-2"
                     onClick={(e) => handleExport(form.id, e)}
                     title="PPT 내보내기"
                   >
@@ -267,6 +430,15 @@ export default function WorshipFormListPage() {
               <div className="flex sm:hidden justify-end gap-1 mt-2 pt-2 border-t border-gray-800">
                 <button
                   className="btn btn-ghost p-2"
+                  onClick={(e) => handlePreview(form.id, e)}
+                  title="PPT 미리보기"
+                >
+                  {previewLoading && previewFormId === form.id
+                    ? <Loader size={15} className="animate-spin" />
+                    : <Eye size={15} />}
+                </button>
+                <button
+                  className="btn btn-ghost p-2"
                   onClick={(e) => handleExport(form.id, e)}
                   title="PPT 내보내기"
                 >
@@ -294,6 +466,21 @@ export default function WorshipFormListPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {previewFormId && previewData && !previewLoading && (
+        <PptPreviewModal
+          onClose={() => { setPreviewFormId(null); setPreviewData(null) }}
+          onExport={handlePreviewExport}
+          exporting={previewExporting}
+          formData={previewData.formData}
+          songs={previewData.songs}
+          season={previewData.season}
+          members={members}
+          leaderIds={previewData.leaderIds}
+          categories={categories}
+          formId={previewFormId}
+        />
       )}
     </div>
   )

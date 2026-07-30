@@ -14,6 +14,9 @@ app.use(express.urlencoded({ extended: true }));
 // ── 인증 라우트 (로그인/me/theme) — 공개
 app.use('/api/auth', require('./routes/auth'));
 
+// ── 공개 공유 API — 인증 불필요
+app.use('/api/public', require('./routes/public'));
+
 // ── 이하 모든 API는 로그인 필요
 app.use('/api', requireAuth);
 

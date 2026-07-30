@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { X, ChevronLeft, ChevronRight, Eye, FileDown, Loader } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Eye, FileDown, Loader, Share2, Check } from 'lucide-react'
 
 const BW = 750
 const BH = 1000
@@ -181,11 +181,38 @@ function ScaledSlide({ children, slideW, slideH }) {
   )
 }
 
-export default function PptPreviewModal({ onClose, onExport, exporting, formData, songs, season, members, leaderIds, categories }) {
+export default function PptPreviewModal({ onClose, onExport, exporting, formData, songs, season, members, leaderIds, categories, formId }) {
   const [viewMode, setViewMode] = useState('1')
   const [currentPage, setCurrentPage] = useState(0)
   const bodyRef = useRef(null)
   const [bodySize, setBodySize] = useState({ w: 900, h: 640 })
+  const [shareLoading, setShareLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleShare = async () => {
+    if (!formId) return
+    setShareLoading(true)
+    try {
+      const token = localStorage.getItem('songform-token')
+      const res = await fetch(`/api/worship-forms/${formId}/share`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      const data = await res.json()
+      const url = `${window.location.origin}/share/${data.token}`
+      try {
+        await navigator.clipboard.writeText(url)
+      } catch {
+        window.prompt('공유 링크를 복사하세요:', url)
+      }
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    } catch {
+      alert('공유 링크 생성에 실패했습니다.')
+    } finally {
+      setShareLoading(false)
+    }
+  }
 
   useEffect(() => {
     const update = () => {
@@ -256,15 +283,33 @@ export default function PptPreviewModal({ onClose, onExport, exporting, formData
           <span className="text-gray-500 text-xs">{safePage + 1} / {totalPages}</span>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onExport}
-            disabled={exporting}
-            className="btn btn-secondary"
-          >
-            {exporting ? <Loader size={16} className="animate-spin" /> : <FileDown size={16} />}
-            PPT 내보내기
-          </button>
+          {formId && (
+            <button
+              type="button"
+              onClick={handleShare}
+              disabled={shareLoading || copied}
+              className="btn btn-ghost border border-gray-700 text-gray-300 hover:text-white"
+              title="공유 링크 복사"
+            >
+              {shareLoading
+                ? <Loader size={15} className="animate-spin" />
+                : copied
+                  ? <Check size={15} className="text-green-400" />
+                  : <Share2 size={15} />}
+              <span className="hidden sm:inline">{copied ? '복사됨!' : '공유'}</span>
+            </button>
+          )}
+          {onExport && (
+            <button
+              type="button"
+              onClick={onExport}
+              disabled={exporting}
+              className="btn btn-secondary"
+            >
+              {exporting ? <Loader size={16} className="animate-spin" /> : <FileDown size={16} />}
+              PPT 내보내기
+            </button>
+          )}
           {/* View mode toggle */}
           <div className="flex rounded-lg border border-indigo-700 overflow-hidden text-xs font-medium">
             <button

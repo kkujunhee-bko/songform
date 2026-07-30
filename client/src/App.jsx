@@ -6,6 +6,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import MyPage from './pages/MyPage'
 import WorshipFormListPage from './pages/WorshipFormListPage'
 import WorshipFormPage from './pages/WorshipFormPage'
+import SharePreviewPage from './pages/SharePreviewPage'
 import SettingsPage from './pages/SettingsPage'
 import UserManagementPage from './pages/UserManagementPage'
 import RolePermissionsPage from './pages/RolePermissionsPage'
@@ -63,6 +64,7 @@ export default function App() {
         {/* 공개 */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/share/:token" element={<SharePreviewPage />} />
 
         {/* 보호된 레이아웃 */}
         <Route element={<ProtectedLayout />}>

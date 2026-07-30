@@ -551,6 +551,7 @@ export default function WorshipFormPage() {
           members={members}
           leaderIds={leaderIds}
           categories={categories}
+          formId={savedFormId || (id ? Number(id) : null)}
         />
       )}
     </div>

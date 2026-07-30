@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { randomUUID } = require('crypto');
 const { query } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
 
@@ -194,6 +195,20 @@ router.put('/:id', asyncHandler(async (req, res) => {
     'SELECT * FROM worship_form_songs WHERE form_id = $1 ORDER BY sort_order ASC', [id]
   );
   res.json({ ...fullForm.rows[0], songs: formSongs.rows });
+}));
+
+// POST /api/worship-forms/:id/share — 공유 토큰 생성 (없으면 신규, 있으면 기존 반환)
+router.post('/:id/share', asyncHandler(async (req, res) => {
+  const existing = await query('SELECT share_token FROM worship_forms WHERE id = $1', [req.params.id]);
+  if (!existing.rows[0]) return res.status(404).json({ error: '폼을 찾을 수 없습니다.' });
+
+  if (existing.rows[0].share_token) {
+    return res.json({ token: existing.rows[0].share_token });
+  }
+
+  const token = randomUUID();
+  await query('UPDATE worship_forms SET share_token = $1 WHERE id = $2', [token, req.params.id]);
+  res.json({ token });
 }));
 
 // DELETE /api/worship-forms/:id
