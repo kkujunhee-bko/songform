@@ -150,7 +150,7 @@ export default function WorshipFormPage() {
     }
   }, [id, isEdit])
 
-  // 카테고리 기본값 설정
+  // 구분 기본값 설정
   useEffect(() => {
     if (!formData.category_id && categories.length > 0) {
       setFormData(prev => ({ ...prev, category_id: categories[0].id }))
@@ -386,15 +386,15 @@ export default function WorshipFormPage() {
             />
           </div>
 
-          {/* 카테고리 */}
+          {/* 구분 */}
           <div>
-            <label className="label">예배 카테고리 *</label>
+            <label className="label">예배 구분 *</label>
             <select
               className="select"
               value={formData.category_id}
               onChange={e => setFormData(p => ({ ...p, category_id: parseInt(e.target.value) }))}
             >
-              <option value="">카테고리 선택</option>
+              <option value="">구분 선택</option>
               {categories.map(c => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
