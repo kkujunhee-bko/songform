@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, ChevronLeft, ChevronRight, Eye, FileDown, Loader, Share2, Check } from 'lucide-react'
+import { useSettingsStore } from '../../store/settingsStore'
 
 const BW = 750
 const BH = 1000
@@ -11,9 +12,10 @@ function formatDate(dateStr) {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`
 }
 
-function getFlowItems(formFlow) {
+function getFlowItems(formFlow, formElements) {
   return (Array.isArray(formFlow) ? formFlow : []).map(el => {
-    const initial = (el.name || '?')
+    const current = formElements?.find(fe => fe.id === el.id)
+    const initial = current?.name ?? el.name ?? '?'
     const rSuffix = el.repeat && el.repeat > 1 ? `x${el.repeat}` : ''
     return { initial, rSuffix }
   })
@@ -101,8 +103,8 @@ function CoverSlide({ categoryName, dateStr, leaderStr, season, songs }) {
   )
 }
 
-function SongSlide({ song, index }) {
-  const flowItems = getFlowItems(song.form_flow)
+function SongSlide({ song, index, formElements }) {
+  const flowItems = getFlowItems(song.form_flow, formElements)
 
   // 상단 번호 뱃지 위치/크기 (px, BH=1000 기준)
   const BADGE_X = 10, BADGE_Y = 5, BADGE_W = 50, BADGE_H = 50
@@ -182,6 +184,7 @@ function ScaledSlide({ children, slideW, slideH }) {
 }
 
 export default function PptPreviewModal({ onClose, onExport, exporting, formData, songs, season, members, leaderIds, categories, formId }) {
+  const formElements = useSettingsStore(s => s.formElements)
   const [viewMode, setViewMode] = useState('1')
   const [currentPage, setCurrentPage] = useState(0)
   const bodyRef = useRef(null)
@@ -265,7 +268,7 @@ export default function PptPreviewModal({ onClose, onExport, exporting, formData
     if (sd.type === 'cover') {
       return <CoverSlide categoryName={categoryName} dateStr={dateStr} leaderStr={leaderStr} season={season} songs={filteredSongs} />
     }
-    return <SongSlide song={sd.song} index={sd.index} />
+    return <SongSlide song={sd.song} index={sd.index} formElements={formElements} />
   }
 
   // 현재 페이지에 보여줄 슬라이드
