@@ -19,13 +19,18 @@ import { X, Plus, LayoutTemplate, ChevronRight } from 'lucide-react'
 import { useSettingsStore } from '../../store/settingsStore'
 import api from '../../api/client'
 
-function FlowItem({ item, onRemove, onRepeatChange }) {
+function FlowItem({ item, onRemove, onRepeatChange, formElements }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.uid })
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
   }
+
+  // 저장된 flow JSON의 이름이 오래된 경우, 현재 요소 정의의 이름을 우선 사용
+  const current = formElements?.find(el => el.id === item.id)
+  const displayName = current?.name ?? item.name
+  const displayColor = current?.color ?? item.color
 
   return (
     <div
@@ -37,14 +42,14 @@ function FlowItem({ item, onRemove, onRepeatChange }) {
       <div
         className="relative flex flex-col items-center justify-center w-8 h-8 sm:w-12 sm:h-10 rounded-xl border-2 cursor-grab active:cursor-grabbing select-none transition-all"
         style={{
-          backgroundColor: item.color + '22',
-          borderColor: item.color,
+          backgroundColor: displayColor + '22',
+          borderColor: displayColor,
         }}
         {...attributes}
         {...listeners}
       >
-        <span className="text-xs font-bold leading-tight text-center px-1" style={{ color: item.color }}>
-          {item.name}
+        <span className="text-xs font-bold leading-tight text-center px-1" style={{ color: displayColor }}>
+          {displayName}
         </span>
 
         <button
@@ -293,6 +298,7 @@ export default function FormFlowBuilder({ flow, onChange, enablePreset = false }
                       item={item}
                       onRemove={removeElement}
                       onRepeatChange={changeRepeat}
+                      formElements={formElements}
                     />
                   ))}
                 </div>
