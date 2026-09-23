@@ -26,6 +26,45 @@ function hexAlpha(hex6, alpha255) {
   return hex6.replace('#', '') + Math.round(alpha255).toString(16).padStart(2, '0');
 }
 
+function parseFormFlow(raw) {
+  return Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
+}
+
+function getSongFlowItems(song) {
+  return parseFormFlow(song.form_flow).map(el => {
+    const initial = el.name || '?';
+    const rSuffix = el.repeat && el.repeat > 1 ? `x${el.repeat}` : '';
+    return { initial, rSuffix };
+  });
+}
+
+// 글자 하나의 대략적인 폭(인치, 12pt 기준) — 커버 슬라이드 흐름/코멘트 요약 줄바꿈 방지용
+function estimateTextWidth(text, ptSize = 12) {
+  const charW = (ch) => (/[가-힣ㄱ-ㅣ]/.test(ch) ? 0.155 : /[A-Za-z0-9]/.test(ch) ? 0.09 : 0.08) * (ptSize / 12);
+  return [...text].reduce((w, ch) => w + charW(ch), 0);
+}
+
+function truncateToWidth(text, maxWidthIn, ptSize = 12) {
+  if (maxWidthIn <= 0) return '';
+  let w = 0, out = '';
+  for (const ch of text) {
+    const cw = estimateTextWidth(ch, ptSize);
+    if (w + cw > maxWidthIn) return out + '…';
+    w += cw;
+    out += ch;
+  }
+  return out;
+}
+
+// 코멘트를 줄바꿈(\n) 기준으로 나누고, 최대 줄 수를 넘으면 말줄임 처리
+function splitCommentLines(comment, maxLines) {
+  const lines = comment.split('\n');
+  if (lines.length <= maxLines) return lines;
+  const shown = lines.slice(0, maxLines);
+  shown[maxLines - 1] = shown[maxLines - 1] + ' …';
+  return shown;
+}
+
 // POST /api/export/pptx/:formId
 router.post('/pptx/:formId', asyncHandler(async (req, res) => {
   const { formId } = req.params;
@@ -119,15 +158,37 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
     fontSize: 12, color: 'A8B4C0', align: 'center',
   });
 
-  // 노래 목록
+  // 노래 목록: 제목 행 + (흐름/코멘트가 있으면) 요약 행
   const SONG_START_Y = 5.18;
-  const maxSongs = Math.min(songs.length, 10);
-  const lineH = songs.length > 8 ? 0.42 : 0.48;
-  for (let i = 0; i < maxSongs; i++) {
+  const LIST_BOTTOM = 9.85;
+  const TITLE_H = 0.30;
+  const FLOW_H = 0.18;
+  const COMMENT_LINE_H = 0.16;
+  const MAX_COMMENT_LINES = 3;
+  const ROW_GAP = 0.04;
+  const LIST_W = 6.25;
+
+  const coverRows = [];
+  let cursor = SONG_START_Y;
+  for (let i = 0; i < songs.length; i++) {
     const s = songs[i];
+    const flowItems = getSongFlowItems(s);
+    const comment = (s.comment || '').trim();
+    const commentLines = comment ? splitCommentLines(comment, MAX_COMMENT_LINES) : [];
+    const flowH = flowItems.length > 0 ? FLOW_H : 0;
+    const subH = flowH + commentLines.length * COMMENT_LINE_H;
+    const h = TITLE_H + subH;
+    if (coverRows.length > 0 && cursor + h > LIST_BOTTOM) break;
+    coverRows.push({ song: s, index: i, top: cursor, titleH: TITLE_H, subH, flowItems, commentLines });
+    cursor += h + ROW_GAP;
+  }
+  const overflowCount = songs.length - coverRows.length;
+
+  for (const row of coverRows) {
+    const s = row.song;
     // 번호
-    slide1.addText(`${i + 1}`, {
-      x: 0.4, y: SONG_START_Y + i * lineH, w: 0.35, h: lineH,
+    slide1.addText(`${row.index + 1}`, {
+      x: 0.4, y: row.top, w: 0.35, h: row.titleH,
       fontSize: 14, color: '3B82F6', bold: true, align: 'center', valign: 'middle',
     });
     // 제목 + 키 인라인
@@ -136,13 +197,37 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
       ...(s.performance_key ? [{ text: ` - ${s.performance_key}`, options: { color: '3B82F6', fontSize: 14, bold: true } }] : []),
     ];
     slide1.addText(titleParts, {
-      x: 0.85, y: SONG_START_Y + i * lineH, w: 6.25, h: lineH,
+      x: 0.85, y: row.top, w: LIST_W, h: row.titleH,
       align: 'left', valign: 'middle',
     });
+
+    // 송폼 흐름 (1줄) + 코멘트 (줄바꿈 반영, 최대 MAX_COMMENT_LINES줄)
+    if (row.subH > 0) {
+      const flowStr = row.flowItems.length > 0
+        ? truncateToWidth(row.flowItems.map(it => it.initial + it.rSuffix).join(' → '), LIST_W, 12)
+        : '';
+      const lineCount = (flowStr ? 1 : 0) + row.commentLines.length;
+      let lineIdx = 0;
+      const subParts = [];
+      if (flowStr) {
+        lineIdx++;
+        subParts.push({ text: flowStr, options: { color: 'DC2626', bold: true, fontSize: 12, breakLine: lineIdx < lineCount } });
+      }
+      row.commentLines.forEach(line => {
+        lineIdx++;
+        subParts.push({ text: truncateToWidth(line, LIST_W, 12), options: { color: '64748B', fontSize: 12, breakLine: lineIdx < lineCount } });
+      });
+      slide1.addText(subParts, {
+        x: 0.85, y: row.top + row.titleH, w: LIST_W, h: row.subH,
+        align: 'left', valign: 'top', wrap: false,
+      });
+    }
   }
-  if (songs.length > 10) {
-    slide1.addText(`외 ${songs.length - 10}곡`, {
-      x: 0.4, y: SONG_START_Y + 10 * lineH, w: 6.7, h: 0.38,
+  if (overflowCount > 0) {
+    const lastRow = coverRows[coverRows.length - 1];
+    const y = lastRow ? lastRow.top + lastRow.titleH + lastRow.subH + 0.06 : SONG_START_Y;
+    slide1.addText(`외 ${overflowCount}곡`, {
+      x: 0.4, y, w: 6.7, h: 0.3,
       fontSize: 12, color: 'A8B4C0', align: 'center',
     });
   }
@@ -153,9 +238,7 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
     const song = songs[si];
     const slide = pptx.addSlide();
 
-    const formFlow = Array.isArray(song.form_flow)
-      ? song.form_flow
-      : JSON.parse(song.form_flow || '[]');
+    const formFlow = parseFormFlow(song.form_flow);
 
     // ── ① 악보 이미지: 5% 축소 후 슬라이드 중앙 배치 ──
     const IMG_W = 7.5 * 0.95;          // 7.125"

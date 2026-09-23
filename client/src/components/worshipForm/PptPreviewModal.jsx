@@ -21,11 +21,48 @@ function getFlowItems(formFlow, formElements) {
   })
 }
 
-function CoverSlide({ categoryName, dateStr, leaderStr, season, songs }) {
-  const maxSongs = Math.min(songs.length, 10)
-  const lineH = songs.length > 8 ? 42 : 48
+const COVER_FLOW_H = 18
+const COVER_COMMENT_LINE_H = 16
+const COVER_MAX_COMMENT_LINES = 3
+
+// 코멘트를 줄바꿈(\n) 기준으로 나누고, 최대 줄 수를 넘으면 말줄임 처리
+function splitCommentLines(comment, maxLines) {
+  const lines = comment.split('\n')
+  if (lines.length <= maxLines) return lines
+  const shown = lines.slice(0, maxLines)
+  shown[maxLines - 1] = shown[maxLines - 1] + ' …'
+  return shown
+}
+
+// 커버 슬라이드의 곡 목록 영역에 들어갈 행들을 계산 (제목 행 + 선택적 흐름/코멘트 행)
+function layoutCoverRows(songs, formElements, listTop, listBottom) {
+  const TITLE_H = 30
+  const ROW_GAP = 4
+
+  const rows = []
+  let cursor = listTop
+  let i = 0
+  for (; i < songs.length; i++) {
+    const song = songs[i]
+    const flowItems = getFlowItems(song.form_flow, formElements)
+    const comment = song.comment?.trim() || ''
+    const commentLines = comment ? splitCommentLines(comment, COVER_MAX_COMMENT_LINES) : []
+    const flowH = flowItems.length > 0 ? COVER_FLOW_H : 0
+    const commentH = commentLines.length * COVER_COMMENT_LINE_H
+    const subH = flowH + commentH
+    const h = TITLE_H + subH
+    if (rows.length > 0 && cursor + h > listBottom) break
+    rows.push({ song, index: i, top: cursor, titleH: TITLE_H, subH, flowItems, commentLines })
+    cursor += h + ROW_GAP
+  }
+  return { rows, overflowCount: songs.length - rows.length, listEnd: cursor }
+}
+
+function CoverSlide({ categoryName, dateStr, leaderStr, season, songs, formElements }) {
   const SONG_START_Y = 518
+  const LIST_BOTTOM = 985
   const seasonY = leaderStr ? 375 : 325
+  const { rows: songRows, overflowCount } = layoutCoverRows(songs, formElements, SONG_START_Y, LIST_BOTTOM)
 
   return (
     <div style={{
@@ -74,29 +111,62 @@ function CoverSlide({ categoryName, dateStr, leaderStr, season, songs }) {
       }}>
         [ 예배 순서 ]
       </div>
-      {songs.slice(0, maxSongs).map((song, i) => (
-        <div key={i} style={{
-          position: 'absolute', left: 0, top: SONG_START_Y + i * lineH,
-          width: BW, height: lineH, display: 'flex', alignItems: 'center',
-        }}>
-          <span style={{ position: 'absolute', left: 40, width: 35, fontSize: 14, fontWeight: 'bold', color: '#3B82F6', textAlign: 'center' }}>
-            {i + 1}
-          </span>
-          <span style={{ position: 'absolute', left: 85, right: 40, fontSize: 14, color: '#1E293B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {song.song_title}
-            {song.performance_key && (
-              <span style={{ color: '#3B82F6', fontWeight: 'bold' }}> - {song.performance_key}</span>
-            )}
-          </span>
+      {songRows.map(row => (
+        <div key={row.index}>
+          <div style={{
+            position: 'absolute', left: 0, top: row.top,
+            width: BW, height: row.titleH, display: 'flex', alignItems: 'center',
+          }}>
+            <span style={{ position: 'absolute', left: 40, width: 35, fontSize: 14, fontWeight: 'bold', color: '#3B82F6', textAlign: 'center' }}>
+              {row.index + 1}
+            </span>
+            <span style={{ position: 'absolute', left: 85, right: 40, fontSize: 14, color: '#1E293B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {row.song.song_title}
+              {row.song.performance_key && (
+                <span style={{ color: '#3B82F6', fontWeight: 'bold' }}> - {row.song.performance_key}</span>
+              )}
+            </span>
+          </div>
+          {row.subH > 0 && (
+            <div style={{
+              position: 'absolute', left: 85, right: 40, top: row.top + row.titleH, height: row.subH,
+              display: 'flex', flexDirection: 'column', fontSize: 12,
+            }}>
+              {row.flowItems.length > 0 && (
+                <div style={{
+                  height: COVER_FLOW_H, display: 'flex', alignItems: 'center',
+                  overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                  color: '#DC2626', fontWeight: 'bold',
+                }}>
+                  {row.flowItems.map((item, fi) => (
+                    <span key={fi}>
+                      {fi > 0 && ' → '}
+                      {item.initial}{item.rSuffix}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {row.commentLines.map((line, li) => (
+                <div key={li} style={{
+                  height: COVER_COMMENT_LINE_H, display: 'flex', alignItems: 'center',
+                  overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                  color: '#64748B',
+                }}>
+                  {line}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ))}
-      {songs.length > 10 && (
+      {overflowCount > 0 && (
         <div style={{
-          position: 'absolute', left: 40, top: SONG_START_Y + 10 * lineH, width: 670, height: 38,
+          position: 'absolute', left: 40, top: songRows.length > 0 ? songRows[songRows.length - 1].top + songRows[songRows.length - 1].titleH + songRows[songRows.length - 1].subH + 6 : SONG_START_Y,
+          width: 670, height: 30,
           fontSize: 12, color: '#A8B4C0', textAlign: 'center',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          외 {songs.length - 10}곡
+          외 {overflowCount}곡
         </div>
       )}
     </div>
@@ -266,7 +336,7 @@ export default function PptPreviewModal({ onClose, onExport, exporting, formData
 
   const renderSlide = (sd) => {
     if (sd.type === 'cover') {
-      return <CoverSlide categoryName={categoryName} dateStr={dateStr} leaderStr={leaderStr} season={season} songs={filteredSongs} />
+      return <CoverSlide categoryName={categoryName} dateStr={dateStr} leaderStr={leaderStr} season={season} songs={filteredSongs} formElements={formElements} />
     }
     return <SongSlide song={sd.song} index={sd.index} formElements={formElements} />
   }
