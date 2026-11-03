@@ -1,6 +1,14 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, UserCheck, UserX, ShieldCheck, User, X, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, UserCheck, UserX, ShieldCheck, User, X, Check, Search, GripVertical } from 'lucide-react'
+import {
+  DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy,
+  useSortable, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import api from '../api/client'
 import { useAuthStore } from '../store/authStore'
 
@@ -117,16 +125,100 @@ function UserFormModal({ initial, onSave, onClose, isEdit }) {
   )
 }
 
+function SortableUserCard({ user, currentUserId, dragEnabled, onEdit, onDelete }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: user.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 }
+
+  return (
+      <div ref={setNodeRef} style={style} className="card flex items-center gap-4">
+        {/* 드래그 핸들 */}
+        <div
+          className={dragEnabled ? 'cursor-grab text-gray-600' : 'text-gray-800 cursor-not-allowed'}
+          title={dragEnabled ? '드래그로 순서 변경' : '검색/구분 필터를 해제하면 순서를 변경할 수 있습니다.'}
+          {...(dragEnabled ? { ...attributes, ...listeners } : {})}
+        >
+          <GripVertical size={14} />
+        </div>
+
+        {/* 아이콘 */}
+        <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${ROLE_MAP[user.role]?.iconCls ?? 'bg-gray-700 text-gray-400'}`}>
+          {user.role === 'admin' ? <ShieldCheck size={16} /> : <User size={16} />}
+        </div>
+
+        {/* 정보 */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-white text-sm">{user.name}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${ROLE_MAP[user.role]?.badgeCls ?? 'bg-gray-700 text-gray-400'}`}>
+              {ROLE_MAP[user.role]?.label ?? user.role}
+            </span>
+            {!user.is_active && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-red-900/30 text-red-400">비활성</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
+            <span>{user.email}</span>
+            {user.phone && <span>{user.phone}</span>}
+          </div>
+        </div>
+
+        {/* 상태 아이콘 */}
+        <div className="flex-shrink-0">
+          {user.is_active
+            ? <UserCheck size={14} className="text-green-500" />
+            : <UserX size={14} className="text-red-500" />}
+        </div>
+
+        {/* 액션 */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            className="btn btn-ghost p-2"
+            onClick={() => onEdit(user)}
+            title="수정"
+          >
+            <Pencil size={14} />
+          </button>
+          {String(user.id) !== String(currentUserId) && (
+            <button
+              className="btn btn-ghost p-2 hover:text-red-400"
+              onClick={() => onDelete(user)}
+              title="삭제"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+  )
+}
+
 export default function UserManagementPage() {
   const qc = useQueryClient()
   const currentUser = useAuthStore(s => s.user)
 
   const [modal, setModal] = useState(null)  // null | { mode: 'create' | 'edit', data }
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [keyword, setKeyword] = useState('')
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['users'],
     queryFn: () => api.get('/users'),
   })
+
+  const filteredUsers = useMemo(() => {
+    const kw = keyword.trim().toLowerCase()
+    return users.filter(u => {
+      if (roleFilter !== 'all' && u.role !== roleFilter) return false
+      if (!kw) return true
+      return [u.name, u.email, u.phone].some(v => v?.toLowerCase().includes(kw))
+    })
+  }, [users, roleFilter, keyword])
+
+  const dragEnabled = roleFilter === 'all' && !keyword.trim()
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['users'] })
 
@@ -150,6 +242,20 @@ export default function UserManagementPage() {
     deleteMutation.mutate(user.id)
   }
 
+  const handleDragEnd = async ({ active, over }) => {
+    if (!dragEnabled || !over || active.id === over.id) return
+    const oldIdx = users.findIndex(u => u.id === active.id)
+    const newIdx = users.findIndex(u => u.id === over.id)
+    const reordered = arrayMove(users, oldIdx, newIdx)
+    qc.setQueryData(['users'], reordered)  // 낙관적 반영
+    try {
+      await api.post('/users/reorder', { ids: reordered.map(u => u.id) })
+    } catch (e) {
+      alert(e.message)
+    }
+    invalidate()
+  }
+
   const handleSave = async (form) => {
     if (modal.mode === 'create') {
       await createMutation.mutateAsync(form)
@@ -164,7 +270,9 @@ export default function UserManagementPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">회원 관리</h1>
-          <p className="text-sm text-gray-500 mt-1">총 {users.length}명</p>
+          <p className="text-sm text-gray-500 mt-1">
+            총 {users.length}명{filteredUsers.length !== users.length && ` (검색 결과 ${filteredUsers.length}명)`}
+          </p>
         </div>
         <button
           className="btn btn-primary"
@@ -175,64 +283,50 @@ export default function UserManagementPage() {
         </button>
       </div>
 
+      {/* 검색 / 구분 필터 */}
+      <div className="flex gap-2 mb-4">
+        <select className="select w-32 flex-shrink-0" value={roleFilter}
+          onChange={e => setRoleFilter(e.target.value)}>
+          <option value="all">전체 구분</option>
+          {Object.entries(ROLE_MAP).map(([value, { label }]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+        <div className="relative flex-1">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input className="input pl-9" value={keyword}
+            onChange={e => setKeyword(e.target.value)}
+            placeholder="이름, 아이디, 휴대폰 번호 검색..." />
+        </div>
+      </div>
+      <p className="text-xs text-gray-600 mb-3">
+        {dragEnabled
+          ? '왼쪽 핸들을 드래그하면 노출 순서를 변경할 수 있습니다. (사용자 화면의 인도자 목록에도 반영됩니다)'
+          : '검색/구분 필터를 해제하면 노출 순서를 변경할 수 있습니다.'}
+      </p>
+
       {/* 목록 */}
       {isLoading ? (
         <div className="text-center py-16 text-gray-500">불러오는 중...</div>
       ) : (
         <div className="space-y-2">
-          {users.map(user => (
-            <div key={user.id}
-              className="card flex items-center gap-4">
-              {/* 아이콘 */}
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${ROLE_MAP[user.role]?.iconCls ?? 'bg-gray-700 text-gray-400'}`}>
-                {user.role === 'admin' ? <ShieldCheck size={16} /> : <User size={16} />}
-              </div>
-
-              {/* 정보 */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-white text-sm">{user.name}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${ROLE_MAP[user.role]?.badgeCls ?? 'bg-gray-700 text-gray-400'}`}>
-                    {ROLE_MAP[user.role]?.label ?? user.role}
-                  </span>
-                  {!user.is_active && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-red-900/30 text-red-400">비활성</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 mt-0.5 text-xs text-gray-500">
-                  <span>{user.email}</span>
-                  {user.phone && <span>{user.phone}</span>}
-                </div>
-              </div>
-
-              {/* 상태 아이콘 */}
-              <div className="flex-shrink-0">
-                {user.is_active
-                  ? <UserCheck size={14} className="text-green-500" />
-                  : <UserX size={14} className="text-red-500" />}
-              </div>
-
-              {/* 액션 */}
-              <div className="flex items-center gap-1 flex-shrink-0">
-                <button
-                  className="btn btn-ghost p-2"
-                  onClick={() => setModal({ mode: 'edit', data: { ...user, password: '' } })}
-                  title="수정"
-                >
-                  <Pencil size={14} />
-                </button>
-                {String(user.id) !== String(currentUser?.id) && (
-                  <button
-                    className="btn btn-ghost p-2 hover:text-red-400"
-                    onClick={() => handleDelete(user)}
-                    title="삭제"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+          {filteredUsers.length === 0 && (
+            <div className="text-center py-12 text-sm text-gray-500">조건에 맞는 회원이 없습니다.</div>
+          )}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={filteredUsers.map(u => u.id)} strategy={verticalListSortingStrategy}>
+              {filteredUsers.map(user => (
+                <SortableUserCard
+                  key={user.id}
+                  user={user}
+                  currentUserId={currentUser?.id}
+                  dragEnabled={dragEnabled}
+                  onEdit={u => setModal({ mode: 'edit', data: { ...u, password: '' } })}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
       )}
 

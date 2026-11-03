@@ -122,9 +122,9 @@ export default function WorshipFormPage() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  // 회원 목록 로드 (인도자 선택용)
+  // 리더 구분 회원 목록 로드 (인도자 선택용)
   useEffect(() => {
-    api.get('/members').then(setMembers).catch(() => setMembers([]))
+    api.get('/members?role=leader').then(setMembers).catch(() => setMembers([]))
   }, [])
 
   // 기존 데이터 로드 (편집 모드)

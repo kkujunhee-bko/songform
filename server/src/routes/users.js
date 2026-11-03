@@ -13,9 +13,19 @@ router.get('/', asyncHandler(async (req, res) => {
   const result = await query(
     `SELECT id, name, email, phone, role, theme, is_active, created_at
      FROM users
-     ORDER BY role DESC, created_at ASC`
+     ORDER BY sort_order ASC, id ASC`
   );
   res.json(result.rows);
+}));
+
+// POST /api/users/reorder
+router.post('/reorder', asyncHandler(async (req, res) => {
+  const { ids } = req.body; // 노출 순서대로 정렬된 id 배열
+  if (!Array.isArray(ids)) return res.status(400).json({ error: 'ids 배열을 전달해주세요.' });
+  for (let i = 0; i < ids.length; i++) {
+    await query('UPDATE users SET sort_order = $1 WHERE id = $2', [i + 1, ids[i]]);
+  }
+  res.json({ message: '순서가 업데이트되었습니다.' });
 }));
 
 // POST /api/users
@@ -32,8 +42,8 @@ router.post('/', asyncHandler(async (req, res) => {
 
   const hash = await bcrypt.hash(password, 10);
   const result = await query(
-    `INSERT INTO users (name, email, phone, password_hash, role)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO users (name, email, phone, password_hash, role, sort_order)
+     VALUES ($1, $2, $3, $4, $5, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM users))
      RETURNING id, name, email, phone, role, theme, is_active, created_at`,
     [name, email.trim(), phone || null, hash, role]
   );
