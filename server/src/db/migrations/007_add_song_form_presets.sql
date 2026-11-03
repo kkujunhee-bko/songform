@@ -8,11 +8,10 @@ CREATE TABLE IF NOT EXISTS song_form_preset_categories (
   is_active  BOOLEAN NOT NULL DEFAULT TRUE
 );
 
-INSERT INTO song_form_preset_categories (name, sort_order) VALUES
-  ('선택1', 0),
-  ('선택2', 1),
-  ('선택3', 2)
-ON CONFLICT DO NOTHING;
+INSERT INTO song_form_preset_categories (name, sort_order)
+SELECT v.name, v.sort_order
+FROM (VALUES ('선택1', 0), ('선택2', 1), ('선택3', 2)) AS v(name, sort_order)
+WHERE NOT EXISTS (SELECT 1 FROM song_form_preset_categories);
 
 -- ============================================================
 -- SONG FORM PRESETS (송폼 프리셋)
