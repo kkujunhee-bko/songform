@@ -8,7 +8,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const result = await query(
     `SELECT p.*, c.name AS category_name
      FROM song_form_presets p
-     LEFT JOIN song_form_preset_categories c ON p.category_id = c.id
+     LEFT JOIN song_form_preset_categories c ON p.category_id = c.id AND c.is_active = TRUE
      ORDER BY p.sort_order ASC, p.id ASC`
   );
   res.json(result.rows);
@@ -19,7 +19,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
   const result = await query(
     `SELECT p.*, c.name AS category_name
      FROM song_form_presets p
-     LEFT JOIN song_form_preset_categories c ON p.category_id = c.id
+     LEFT JOIN song_form_preset_categories c ON p.category_id = c.id AND c.is_active = TRUE
      WHERE p.id = $1`,
     [req.params.id]
   );
