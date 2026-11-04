@@ -3,6 +3,7 @@ const router = express.Router();
 const { randomUUID } = require('crypto');
 const { query } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { getSheetUrls } = require('../lib/sheetUrls');
 
 // GET /api/worship-forms
 router.get('/', asyncHandler(async (req, res) => {
@@ -67,7 +68,10 @@ router.get('/:id', asyncHandler(async (req, res) => {
     [req.params.id]
   );
 
-  res.json({ ...formResult.rows[0], songs: songsResult.rows });
+  res.json({
+    ...formResult.rows[0],
+    songs: songsResult.rows.map(r => ({ ...r, sheet_music_urls: getSheetUrls(r) })),
+  });
 }));
 
 // POST /api/worship-forms
@@ -95,19 +99,21 @@ router.post('/', asyncHandler(async (req, res) => {
 
   for (let i = 0; i < songs.length; i++) {
     const { song_id, song_title, performance_key = 'C', semitone_adjustment = 0,
-            form_flow = [], sheet_music_url, sheet_music_snapshot, comment,
+            form_flow = [], sheet_music_url, sheet_music_urls, sheet_music_snapshot, comment,
             bpm, keyboard1_sound_no, keyboard1_sound_name,
             keyboard2_sound_no, keyboard2_sound_name, play_style } = songs[i];
     if (!song_title) continue;
+      const sheetUrls = getSheetUrls({ sheet_music_url, sheet_music_urls });
     await query(
       `INSERT INTO worship_form_songs
          (form_id, song_id, song_title, sort_order, performance_key, semitone_adjustment,
-          form_flow, sheet_music_url, sheet_music_snapshot, comment,
+          form_flow, sheet_music_url, sheet_music_urls, sheet_music_snapshot, comment,
           bpm, keyboard1_sound_no, keyboard1_sound_name,
           keyboard2_sound_no, keyboard2_sound_name, play_style)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
       [form.id, song_id || null, song_title, i, performance_key, semitone_adjustment,
-       JSON.stringify(form_flow), sheet_music_url || null,
+       JSON.stringify(form_flow), sheetUrls[0] || sheet_music_url || null,
+         JSON.stringify(sheetUrls),
        sheet_music_snapshot ? JSON.stringify(sheet_music_snapshot) : null,
        comment || null,
        bpm || null, keyboard1_sound_no || null, keyboard1_sound_name || null,
@@ -162,19 +168,21 @@ router.put('/:id', asyncHandler(async (req, res) => {
     await query('DELETE FROM worship_form_songs WHERE form_id = $1', [id]);
     for (let i = 0; i < songs.length; i++) {
       const { song_id, song_title, performance_key = 'C', semitone_adjustment = 0,
-              form_flow = [], sheet_music_url, sheet_music_snapshot, comment,
+              form_flow = [], sheet_music_url, sheet_music_urls, sheet_music_snapshot, comment,
               bpm, keyboard1_sound_no, keyboard1_sound_name,
               keyboard2_sound_no, keyboard2_sound_name, play_style } = songs[i];
       if (!song_title) continue;
+      const sheetUrls = getSheetUrls({ sheet_music_url, sheet_music_urls });
       await query(
         `INSERT INTO worship_form_songs
            (form_id, song_id, song_title, sort_order, performance_key, semitone_adjustment,
-            form_flow, sheet_music_url, sheet_music_snapshot, comment,
+            form_flow, sheet_music_url, sheet_music_urls, sheet_music_snapshot, comment,
             bpm, keyboard1_sound_no, keyboard1_sound_name,
             keyboard2_sound_no, keyboard2_sound_name, play_style)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
         [id, song_id || null, song_title, i, performance_key, semitone_adjustment,
-         JSON.stringify(form_flow), sheet_music_url || null,
+         JSON.stringify(form_flow), sheetUrls[0] || sheet_music_url || null,
+         JSON.stringify(sheetUrls),
          sheet_music_snapshot ? JSON.stringify(sheet_music_snapshot) : null,
          comment || null,
          bpm || null, keyboard1_sound_no || null, keyboard1_sound_name || null,

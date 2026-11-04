@@ -1,4 +1,5 @@
 const express = require('express');
+const { getSheetUrls } = require('../lib/sheetUrls');
 const router = express.Router();
 const { query } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -26,7 +27,7 @@ router.get('/worship-forms/:token', asyncHandler(async (req, res) => {
   const form = formResult.rows[0];
   const songsResult = await query(
     `SELECT wfs.id, wfs.song_title, wfs.performance_key, wfs.semitone_adjustment,
-            wfs.form_flow, wfs.comment,
+            wfs.form_flow, wfs.comment, wfs.sheet_music_urls,
             COALESCE(wfs.sheet_music_url, s.sheet_music_url) AS sheet_music_url
      FROM worship_form_songs wfs
      LEFT JOIN songs s ON wfs.song_id = s.id
@@ -37,7 +38,7 @@ router.get('/worship-forms/:token', asyncHandler(async (req, res) => {
     [req.params.token]
   );
 
-  res.json({ ...form, songs: songsResult.rows });
+  res.json({ ...form, songs: songsResult.rows.map(r => ({ ...r, sheet_music_urls: getSheetUrls(r) })) });
 }));
 
 module.exports = router;

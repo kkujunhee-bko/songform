@@ -3,6 +3,7 @@ const router = express.Router();
 const pptxgen = require('pptxgenjs');
 const { query } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { getSheetUrls } = require('../lib/sheetUrls');
 const path = require('path');
 const fs = require('fs');
 
@@ -236,6 +237,10 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
   // 레이아웃: 악보가 슬라이드 전체를 채우고, 흐름 아이콘은 악보 위에 오버레이
   for (let si = 0; si < songs.length; si++) {
     const song = songs[si];
+    // 악보 한 장당 한 슬라이드 (악보가 없으면 안내 슬라이드 1장)
+    const sheetUrls = getSheetUrls(song);
+    const pageCount = Math.max(sheetUrls.length, 1);
+    for (let pi = 0; pi < pageCount; pi++) {
     const slide = pptx.addSlide();
 
     const formFlow = parseFormFlow(song.form_flow);
@@ -247,10 +252,11 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
     const IMG_Y = (10.0 - IMG_H) / 2;  // 0.25"   (상하 여백)
 
     let hasImage = false;
-    if (song.sheet_music_url) {
-      const relativePath = song.sheet_music_url.startsWith('/uploads/')
-        ? song.sheet_music_url.slice('/uploads/'.length)
-        : path.basename(song.sheet_music_url);
+    const sheetUrl = sheetUrls[pi];
+    if (sheetUrl) {
+      const relativePath = sheetUrl.startsWith('/uploads/')
+        ? sheetUrl.slice('/uploads/'.length)
+        : path.basename(sheetUrl);
       const imgPath = path.join(UPLOADS_DIR, relativePath);
 
       if (fs.existsSync(imgPath)) {
@@ -398,6 +404,7 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
         align: 'left', valign: 'bottom',
         wrap: true,
       });
+    }
     }
   }
 

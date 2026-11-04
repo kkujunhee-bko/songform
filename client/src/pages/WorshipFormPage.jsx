@@ -13,6 +13,7 @@ import { useAuthStore } from '../store/authStore'
 import SongCard from '../components/worshipForm/SongCard'
 import FormElementPalette, { usePaletteDock, dockPaddingClass } from '../components/worshipForm/PaletteDock'
 import SongImportModal from '../components/worshipForm/SongImportModal'
+import { getSheetUrls } from '../lib/sheetUrls'
 import { findSongByTitle, findCategory } from '../lib/songImport'
 import PptPreviewModal from '../components/worshipForm/PptPreviewModal'
 import { transposeKey } from '../lib/keyUtils'
@@ -25,6 +26,7 @@ const DEFAULT_SONG = () => ({
   semitone_adjustment: 0,
   form_flow: [],
   sheet_music_url: null,
+  sheet_music_urls: [],
   sheet_music_snapshot: null,
   comment: '',
   bpm: '',
@@ -217,6 +219,7 @@ export default function WorshipFormPage() {
       performance_key: s.key,
       comment: s.comment,
       sheet_music_url: matches[i]?.sheet_music_url || null,
+      sheet_music_urls: matches[i]?.sheet_music_url ? [matches[i].sheet_music_url] : [],
     }))
 
     setSongs(prev => {
@@ -284,6 +287,7 @@ export default function WorshipFormPage() {
         semitone_adjustment: s.semitone_adjustment || 0,
         form_flow: s.form_flow || [],
         sheet_music_url: s.sheet_music_url,
+        sheet_music_urls: getSheetUrls(s),
         sheet_music_snapshot: s.sheet_music_snapshot,
         comment: s.comment || '',
         bpm: s.bpm || null,

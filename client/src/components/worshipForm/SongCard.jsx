@@ -6,6 +6,7 @@ import KeySelector from './KeySelector'
 import FormFlowBuilder from './FormFlowBuilder'
 import SheetMusicModal from './SheetMusicModal'
 import api from '../../api/client'
+import { getSheetUrls, sheetPatch } from '../../lib/sheetUrls'
 
 export default function SongCard({ song, index, total = 20, onUpdate, onRemove, onDuplicate }) {
   const [expanded, setExpanded] = useState(true)
@@ -44,6 +45,8 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
     setShowSuggestions(false)
   }
 
+  const sheetUrls = getSheetUrls(song)
+
   const handleKeyChange = ({ key, semitone }) => {
     onUpdate({ performance_key: key, semitone_adjustment: semitone })
   }
@@ -54,7 +57,12 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
       song_title: data.song_title || song.song_title,
       performance_key: data.performance_key || song.performance_key,
       semitone_adjustment: data.semitone_adjustment ?? song.semitone_adjustment ?? 0,
-      sheet_music_url: data.sheet_music_url,
+      // 직접 올리기(append)는 기존 악보 뒤에 이어 붙이고, 그 외 선택은 해당 악보 1장으로 교체
+      ...sheetPatch(
+        data.sheet_music_urls
+          ? (data.append ? [...getSheetUrls(song), ...data.sheet_music_urls] : data.sheet_music_urls)
+          : (data.sheet_music_url ? [data.sheet_music_url] : [])
+      ),
       sheet_music_snapshot: data.sheet_music_data,
       ...(data.form_flow ? { form_flow: data.form_flow } : {}),
     })
@@ -277,37 +285,51 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
             </div>
           </div>
 
-          {/* 악보 이미지 미리보기 */}
-          {song.sheet_music_url && (
+          {/* 첨부 악보 (여러 장: 한 장당 PPT 한 페이지) */}
+          {sheetUrls.length > 0 && (
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-gray-500">
                 <Music size={12} />
-                <span>첨부 악보</span>
+                <span>첨부 악보 {sheetUrls.length > 1 && `(${sheetUrls.length}장)`}</span>
                 <button
                   type="button"
                   className="ml-auto text-xs text-gray-600 hover:text-red-400 transition-colors"
                   onClick={() => {
-                    if (window.confirm('첨부 악보를 삭제 하시겠습니까?')) {
-                      onUpdate({ sheet_music_url: null });
+                    if (window.confirm(sheetUrls.length > 1 ? '첨부 악보를 모두 삭제 하시겠습니까?' : '첨부 악보를 삭제 하시겠습니까?')) {
+                      onUpdate(sheetPatch([]))
                     }
                   }}
-                  title="악보 제거"
+                  title="악보 모두 제거"
                 >
-                  ✕
+                  {sheetUrls.length > 1 ? '모두 삭제' : '✕'}
                 </button>
               </div>
-              <a
-                href={song.sheet_music_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block"
-              >
-                <img
-                  src={song.sheet_music_url}
-                  alt="악보"
-                  className="max-h-56 w-auto rounded-lg border border-gray-700 hover:border-blue-500 transition-colors object-contain bg-gray-800"
-                />
-              </a>
+              <div className="flex flex-wrap gap-2">
+                {sheetUrls.map((url, i) => (
+                  <div key={`${url}-${i}`} className="relative group">
+                    <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+                      <img
+                        src={url}
+                        alt={`악보 ${i + 1}`}
+                        className="max-h-56 w-auto rounded-lg border border-gray-700 hover:border-blue-500 transition-colors object-contain bg-gray-800"
+                      />
+                    </a>
+                    {sheetUrls.length > 1 && (
+                      <>
+                        <span className="absolute top-1 left-1 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded">{i + 1}</span>
+                        <button
+                          type="button"
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 hover:bg-red-600 text-white text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="이 악보만 삭제"
+                          onClick={() => onUpdate(sheetPatch(sheetUrls.filter((_, j) => j !== i)))}
+                        >
+                          ✕
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

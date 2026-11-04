@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Search, X, Database, Loader, ImageIcon, ExternalLink, RefreshCw, Upload } from 'lucide-react'
+import { Search, X, Database, Loader, ImageIcon, ExternalLink, RefreshCw, Upload, ChevronLeft, ChevronRight } from 'lucide-react'
 import api from '../../api/client'
 
 export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }) {
@@ -19,7 +19,7 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
   const [searchOffset, setSearchOffset] = useState(0)
 
   // 직접 올리기 탭
-  const [uploadPreview, setUploadPreview] = useState(null)
+  const [uploadFiles, setUploadFiles] = useState([])   // 업로드할 악보들 (dataURL 배열, 순서 = 페이지 순서)
   const [uploadSaving, setUploadSaving] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef(null)
@@ -108,33 +108,52 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
   }
 
   // ── 직접 올리기 ──────────────────────────────────────────
-  const handleFileSelect = (file) => {
-    if (!file) return
-    if (!file.type.startsWith('image/')) {
-      alert('이미지 파일만 선택할 수 있습니다.')
-      return
-    }
+  const readAsDataUrl = (file) => new Promise((resolve) => {
     const reader = new FileReader()
-    reader.onload = (e) => setUploadPreview(e.target.result)
+    reader.onload = (e) => resolve(e.target.result)
     reader.readAsDataURL(file)
+  })
+
+  // 여러 장 선택/드롭 지원: 기존 목록 뒤에 추가
+  const handleFilesSelect = async (fileList) => {
+    const files = Array.from(fileList || [])
+    if (files.length === 0) return
+    const images = files.filter(f => f.type.startsWith('image/'))
+    if (images.length < files.length) alert('이미지 파일만 선택할 수 있습니다.')
+    const urls = await Promise.all(images.map(readAsDataUrl))
+    setUploadFiles(prev => [...prev, ...urls])
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleDrop = (e) => {
     e.preventDefault()
     setIsDragging(false)
-    const file = e.dataTransfer.files[0]
-    handleFileSelect(file)
+    handleFilesSelect(e.dataTransfer.files)
   }
 
+  const removeUpload = (idx) => setUploadFiles(prev => prev.filter((_, i) => i !== idx))
+  const moveUpload = (idx, dir) => setUploadFiles(prev => {
+    const j = idx + dir
+    if (j < 0 || j >= prev.length) return prev
+    const next = [...prev]
+    ;[next[idx], next[j]] = [next[j], next[idx]]
+    return next
+  })
+
+  // 순서대로 저장 후 한 번에 적용 (곡 DB의 대표 악보는 첫 장만 갱신)
   const handleUploadSave = async () => {
-    if (!uploadPreview) return
+    if (uploadFiles.length === 0) return
     setUploadSaving(true)
     try {
-      const result = await api.post('/sheet-music/save-image', {
-        dataUrl: uploadPreview,
-        songId: songId || null,
-      })
-      onSelect({ sheet_music_url: result.url })
+      const urls = []
+      for (let i = 0; i < uploadFiles.length; i++) {
+        const result = await api.post('/sheet-music/save-image', {
+          dataUrl: uploadFiles[i],
+          songId: i === 0 ? (songId || null) : null,
+        })
+        urls.push(result.url)
+      }
+      onSelect({ sheet_music_urls: urls, append: true })
       onClose()
     } catch (e) {
       alert('이미지 저장 실패: ' + e.message)
@@ -399,10 +418,11 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                multiple
                 className="hidden"
-                onChange={e => handleFileSelect(e.target.files[0])}
+                onChange={e => handleFilesSelect(e.target.files)}
               />
-              {!uploadPreview ? (
+              {uploadFiles.length === 0 ? (
                 <div
                   className={`w-full border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer transition-colors
                     ${isDragging ? 'border-blue-400 bg-blue-900/20' : 'border-gray-600 hover:border-gray-400'}`}
@@ -412,25 +432,64 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                   onDrop={handleDrop}
                 >
                   <Upload size={36} className="text-gray-500" />
-                  <p className="text-sm text-gray-400">클릭하거나 이미지를 여기에 드래그하세요</p>
-                  <p className="text-xs text-gray-600">PNG, JPG, GIF, WebP 지원</p>
+                  <p className="text-sm text-gray-400">클릭하거나 이미지를 여기에 드래그하세요 (여러 장 가능)</p>
+                  <p className="text-xs text-gray-600">PNG, JPG, GIF, WebP 지원 · 한 장당 PPT 한 페이지로 만들어집니다</p>
                 </div>
               ) : (
-                <div className="w-full flex flex-col items-center gap-4">
-                  <div className="relative w-full rounded-xl overflow-hidden border border-gray-700 bg-gray-800">
-                    <img
-                      src={uploadPreview}
-                      alt="미리보기"
-                      className="w-full max-h-80 object-contain"
-                    />
+                <div className="w-full flex flex-col gap-4">
+                  <p className="text-xs text-gray-500">
+                    {uploadFiles.length}장 · 표시된 순서대로 PPT 페이지가 만들어집니다.
+                  </p>
+                  <div
+                    className={`grid grid-cols-2 sm:grid-cols-3 gap-3 rounded-xl p-1 ${isDragging ? 'bg-blue-900/20 ring-2 ring-blue-400' : ''}`}
+                    onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleDrop}
+                  >
+                    {uploadFiles.map((src, idx) => (
+                      <div key={idx} className="relative rounded-lg overflow-hidden border border-gray-700 bg-gray-800 aspect-[1/1.414]">
+                        <img src={src} alt={`악보 ${idx + 1}`} className="w-full h-full object-contain" />
+                        <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                          {idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/70 hover:bg-red-600 flex items-center justify-center"
+                          onClick={() => removeUpload(idx)}
+                          disabled={uploadSaving}
+                          title="삭제"
+                        >
+                          <X size={12} className="text-white" />
+                        </button>
+                        <div className="absolute bottom-1.5 inset-x-1.5 flex justify-between">
+                          <button type="button" className="w-6 h-6 rounded bg-black/70 hover:bg-blue-600 flex items-center justify-center disabled:opacity-30"
+                            onClick={() => moveUpload(idx, -1)} disabled={idx === 0 || uploadSaving} title="앞으로">
+                            <ChevronLeft size={14} className="text-white" />
+                          </button>
+                          <button type="button" className="w-6 h-6 rounded bg-black/70 hover:bg-blue-600 flex items-center justify-center disabled:opacity-30"
+                            onClick={() => moveUpload(idx, 1)} disabled={idx === uploadFiles.length - 1 || uploadSaving} title="뒤로">
+                            <ChevronRight size={14} className="text-white" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      className="rounded-lg border-2 border-dashed border-gray-600 hover:border-gray-400 aspect-[1/1.414] flex flex-col items-center justify-center gap-1 text-gray-500 hover:text-gray-300"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadSaving}
+                    >
+                      <Upload size={20} />
+                      <span className="text-xs">악보 추가</span>
+                    </button>
                   </div>
                   <div className="flex gap-2 w-full">
                     <button
                       className="flex-1 btn btn-ghost border border-gray-700 text-sm"
-                      onClick={() => { setUploadPreview(null); fileInputRef.current.value = '' }}
+                      onClick={() => setUploadFiles([])}
                       disabled={uploadSaving}
                     >
-                      다시 선택
+                      모두 지우기
                     </button>
                     <button
                       className="flex-1 btn btn-primary text-sm flex items-center justify-center gap-2"
@@ -438,7 +497,7 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                       disabled={uploadSaving}
                     >
                       {uploadSaving ? <Loader size={14} className="animate-spin" /> : <Upload size={14} />}
-                      {uploadSaving ? '저장 중...' : '이 이미지로 저장'}
+                      {uploadSaving ? '저장 중...' : `${uploadFiles.length}장 저장`}
                     </button>
                   </div>
                 </div>
