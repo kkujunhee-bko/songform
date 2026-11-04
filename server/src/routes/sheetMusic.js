@@ -3,6 +3,7 @@ const router = express.Router();
 const axios = require('axios');
 const { query } = require('../config/db');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { getSheetUrls } = require('../lib/sheetUrls');
 const path = require('path');
 const fs = require('fs');
 
@@ -20,11 +21,16 @@ router.get('/search', asyncHandler(async (req, res) => {
   const sql = `
     WITH ranked AS (
       SELECT
-        title, artist, default_key, sheet_music_url, form_flow,
+        title, artist, default_key, sheet_music_url, sheet_music_urls, form_flow,
         performance_key, semitone_adjustment, ts,
-        ROW_NUMBER() OVER (PARTITION BY sheet_music_url ORDER BY ts DESC NULLS LAST) AS rn
+        -- 같은 악보라도 여러 장짜리 기록이 있으면 그것을 우선 대표로 사용
+        ROW_NUMBER() OVER (
+          PARTITION BY sheet_music_url
+          ORDER BY (COALESCE(jsonb_array_length(sheet_music_urls), 0) > 1) DESC, ts DESC NULLS LAST
+        ) AS rn
       FROM (
         SELECT title, artist, default_key, sheet_music_url,
+               NULL::jsonb AS sheet_music_urls,
                NULL::jsonb AS form_flow, NULL::varchar AS performance_key,
                NULL::smallint AS semitone_adjustment, updated_at AS ts
         FROM songs
@@ -34,14 +40,14 @@ router.get('/search', asyncHandler(async (req, res) => {
         UNION ALL
 
         SELECT song_title AS title, NULL::text AS artist, NULL::text AS default_key,
-               sheet_music_url, form_flow, performance_key,
+               sheet_music_url, sheet_music_urls, form_flow, performance_key,
                semitone_adjustment, created_at AS ts
         FROM worship_form_songs
         WHERE sheet_music_url IS NOT NULL
           ${cond ? 'AND song_title ILIKE $1' : ''}
       ) sub
     )
-    SELECT title, artist, default_key, sheet_music_url, form_flow,
+    SELECT title, artist, default_key, sheet_music_url, sheet_music_urls, form_flow,
            performance_key, semitone_adjustment
     FROM ranked
     WHERE rn = 1
@@ -50,7 +56,7 @@ router.get('/search', asyncHandler(async (req, res) => {
   `;
 
   const dbResult = await query(sql, param);
-  res.json({ db: dbResult.rows });
+  res.json({ db: dbResult.rows.map(r => ({ ...r, sheet_music_urls: getSheetUrls(r) })) });
 }));
 
 const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';

@@ -1,6 +1,6 @@
 import { parseKey, buildKey } from './keyUtils'
 
-const HEADER_RE = /^(\d{1,2})\s*[/.]\s*(\d{1,2})\s*(.*?)\s*\]?\s*$/        // 11/8 주일예배]
+const HEADER_RE = /^(\d{1,2})\s*[/.]\s*(\d{1,2})\s*(.*?)\s*\]?\s*$/        // [11/8 주일예배]
 const SONG_RE = /^([A-G](?:#|b)?)\s+(.+)$/                                  // A 예수 우리 왕이여
 const LABEL_RE = /[:：]\s*$/                                                // 설교결단 :
 const BULLET_RE = /^[-–—•·*]\s*/
@@ -20,7 +20,7 @@ function resolveDate(month, day, today = new Date()) {
 
 /**
  * 예배 곡 목록 텍스트 분석
- * - 머리줄  : "11/8 주일예배]"  → 날짜, 구분 이름
+ * - 머리줄  : "[11/8 주일예배]"  → 날짜, 구분 이름
  * - 곡 줄   : "A 예수 우리 왕이여" → 키, 제목
  * - 코멘트  : 곡 바로 아래 줄 ("- (엔딩) …" 의 "- "는 제거)
  * - 구간 제목("설교결단 :")과 그 밖의 줄은 무시

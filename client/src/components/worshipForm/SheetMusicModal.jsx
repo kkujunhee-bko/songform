@@ -52,6 +52,10 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
   // ── DB 탭에서 악보 선택 (form_flow, 키 정보도 함께 전달) ──
   const handleSelectDb = (song) => {
     const payload = { sheet_music_url: song.sheet_music_url }
+    // 여러 장짜리 악보는 전체를 함께 적용 (목록에는 첫 장만 표시)
+    if (Array.isArray(song.sheet_music_urls) && song.sheet_music_urls.length > 0) {
+      payload.sheet_music_urls = song.sheet_music_urls
+    }
     if (Array.isArray(song.form_flow) && song.form_flow.length > 0) {
       payload.form_flow = song.form_flow
     }

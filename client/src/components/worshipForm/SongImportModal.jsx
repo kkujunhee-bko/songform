@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { X, ClipboardPaste, Loader } from 'lucide-react'
 import { parseSongList } from '../../lib/songImport'
 
-const PLACEHOLDER = `11/8 주일예배]
+const PLACEHOLDER = `[11/8 주일예배]
 
 A 예수 우리 왕이여
     (엔딩) 박수로 주께 영광!
@@ -53,7 +53,7 @@ export default function SongImportModal({ onClose, onImport }) {
             />
             <p className="text-xs text-gray-600 mt-1">
               "키 제목" 형식의 줄이 곡이 되고, 그 아래 줄은 송폼 코멘트가 됩니다.
-              첫 줄 "11/8 주일예배]"는 예배 날짜/구분에 반영됩니다.
+              첫 줄 "[11/8 주일예배]"는 예배 날짜/구분에 반영됩니다.
             </p>
           </div>
 
