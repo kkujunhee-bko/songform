@@ -86,11 +86,11 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
           <span className="text-xs font-bold text-white">{index + 1}</span>
         </div>
 
-        {/* 노래 제목 입력 */}
+        {/* 찬양 제목 입력 */}
         <div className="flex-1 relative">
           <input
             className="input"
-            placeholder="노래 제목 (필수)"
+            placeholder="찬양 제목 (필수)"
             value={song.song_title || ''}
             onChange={handleTitleChange}
             onFocus={() => setShowSuggestions(true)}
@@ -187,6 +187,7 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
             flow={song.form_flow || []}
             onChange={(flow) => onUpdate({ form_flow: flow })}
             enablePreset
+            sidePalette
           />
 
           {/* 연주 정보 */}

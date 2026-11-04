@@ -185,7 +185,7 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input
                   className="input pl-9"
-                  placeholder="노래 제목을 입력하세요..."
+                  placeholder="찬양 제목을 입력하세요..."
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   onKeyDown={e => {

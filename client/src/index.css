@@ -116,6 +116,8 @@ html:not(.dark) .text-white    { color: #0F172A; }
 /* 흰 텍스트가 색상 버튼 위에 있는 경우 보호 (blue/red/green 버튼) */
 html:not(.dark) .bg-blue-600 .text-white,
 html:not(.dark) .bg-blue-600.text-white,
+html:not(.dark) .bg-blue-700 .text-white,
+html:not(.dark) .bg-blue-700.text-white,
 html:not(.dark) .btn-primary,
 html:not(.dark) .btn-danger { color: #FFFFFF; }
 

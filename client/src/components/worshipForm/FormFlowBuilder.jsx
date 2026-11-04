@@ -15,11 +15,15 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { X, Plus, LayoutTemplate, ChevronRight } from 'lucide-react'
+import { X, Plus, LayoutTemplate, ChevronRight, RotateCcw } from 'lucide-react'
 import { useSettingsStore } from '../../store/settingsStore'
 import api from '../../api/client'
 
-function FlowItem({ item, onRemove, onRepeatChange, formElements }) {
+// 팔레트 → 흐름 드래그 시 사용하는 dataTransfer 타입
+export const PALETTE_MIME = 'application/x-songform-element'
+const isPaletteDrag = (e) => Array.from(e.dataTransfer?.types || []).includes(PALETTE_MIME)
+
+function FlowItem({ item, onRemove, onRepeatChange, onPaletteDrop, formElements }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.uid })
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -37,6 +41,14 @@ function FlowItem({ item, onRemove, onRepeatChange, formElements }) {
       ref={setNodeRef}
       style={style}
       className="flex flex-col items-center gap-1 group"
+      onDragOver={(e) => { if (isPaletteDrag(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' } }}
+      onDrop={(e) => {
+        if (!isPaletteDrag(e)) return
+        e.preventDefault()
+        e.stopPropagation()
+        const rect = e.currentTarget.getBoundingClientRect()
+        onPaletteDrop(e, item.uid, e.clientX > rect.left + rect.width / 2)
+      }}
     >
       {/* 흐름 아이템 박스 */}
       <div
@@ -177,8 +189,9 @@ function PresetModal({ onClose, onSelect }) {
   )
 }
 
-export default function FormFlowBuilder({ flow, onChange, enablePreset = false }) {
+export default function FormFlowBuilder({ flow, onChange, enablePreset = false, sidePalette = false }) {
   const formElements = useSettingsStore(s => s.formElements)
+  const [dropOver, setDropOver] = useState(false)
   const [showPresetModal, setShowPresetModal] = useState(false)
 
   const sensors = useSensors(
@@ -195,9 +208,35 @@ export default function FormFlowBuilder({ flow, onChange, enablePreset = false }
     }
   }
 
-  const addElement = (element) => {
-    const uid = `${element.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-    onChange([...flow, { ...element, uid, repeat: 1 }])
+  const makeItem = (element) => ({
+    ...element,
+    uid: `${element.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    repeat: 1,
+  })
+
+  const addElement = (element) => onChange([...flow, makeItem(element)])
+
+  const readPaletteElement = (e) => {
+    try { return JSON.parse(e.dataTransfer.getData(PALETTE_MIME)) } catch { return null }
+  }
+
+  // 팔레트에서 끌어온 요소를 대상 아이템 앞/뒤에 삽입
+  const dropOnItem = (e, targetUid, after) => {
+    setDropOver(false)
+    const el = readPaletteElement(e)
+    if (!el) return
+    const idx = flow.findIndex(i => i.uid === targetUid)
+    const next = [...flow]
+    next.splice(idx + (after ? 1 : 0), 0, makeItem(el))
+    onChange(next)
+  }
+
+  const dropOnZone = (e) => {
+    setDropOver(false)
+    if (!isPaletteDrag(e)) return
+    e.preventDefault()
+    const el = readPaletteElement(e)
+    if (el) addElement(el)
   }
 
   const removeElement = (uid) => {
@@ -224,8 +263,8 @@ export default function FormFlowBuilder({ flow, onChange, enablePreset = false }
 
   return (
     <div className="space-y-2 sm:space-y-3">
-      {/* 팔레트 */}
-      <div>
+      {/* 팔레트 (사이드 툴바가 있으면 넓은 화면에서는 숨김) */}
+      <div className={sidePalette ? 'lg:hidden' : ''}>
         <label className="label">
           송폼 요소 팔레트
           <span className="hidden sm:inline opacity-70 font-normal"> (클릭하여 추가)</span>
@@ -269,6 +308,19 @@ export default function FormFlowBuilder({ flow, onChange, enablePreset = false }
               </>
             )}
           </label>
+          <div className="flex items-center gap-1.5">
+          {/* 흐름 초기화 */}
+          {flow.length > 0 && (
+            <button
+              type="button"
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-gray-800 text-gray-400 border border-gray-700 hover:bg-red-900/40 hover:text-red-300 hover:border-red-800 transition-colors"
+              onClick={() => { if (confirm('송폼 흐름을 모두 삭제하고 초기화할까요?')) onChange([]) }}
+              title="송폼 흐름 초기화"
+            >
+              <RotateCcw size={12} />
+              <span>초기화</span>
+            </button>
+          )}
           {/* 프리셋 불러오기 버튼 (enablePreset=true 일 때만 표시) */}
           {enablePreset && (
             <button
@@ -282,11 +334,24 @@ export default function FormFlowBuilder({ flow, onChange, enablePreset = false }
               <span className="sm:hidden">프리셋</span>
             </button>
           )}
+          </div>
         </div>
-        <div className="min-h-20 sm:min-h-24 p-2 sm:p-3 bg-gray-950 rounded-lg border border-dashed border-gray-700 form-inner-section">
+        <div
+          className={`min-h-20 sm:min-h-24 p-2 sm:p-3 bg-gray-950 rounded-lg border border-dashed form-inner-section transition-colors ${
+            dropOver ? 'border-blue-500 bg-blue-950/30' : 'border-gray-700'
+          }`}
+          onDragOver={(e) => { if (isPaletteDrag(e)) { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; setDropOver(true) } }}
+          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDropOver(false) }}
+          onDrop={dropOnZone}
+        >
           {flow.length === 0 ? (
             <div className="flex items-center justify-center h-14 sm:h-16 text-xs sm:text-sm text-gray-600">
-              위 팔레트에서 요소를 클릭하여 추가하세요
+              {sidePalette ? (
+                <>
+                  <span className="hidden lg:inline">옆 툴바에서 요소를 끌어다 놓으세요</span>
+                  <span className="lg:hidden">위 팔레트에서 요소를 클릭하여 추가하세요</span>
+                </>
+              ) : '위 팔레트에서 요소를 클릭하여 추가하세요'}
             </div>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -298,6 +363,7 @@ export default function FormFlowBuilder({ flow, onChange, enablePreset = false }
                       item={item}
                       onRemove={removeElement}
                       onRepeatChange={changeRepeat}
+                      onPaletteDrop={dropOnItem}
                       formElements={formElements}
                     />
                   ))}
