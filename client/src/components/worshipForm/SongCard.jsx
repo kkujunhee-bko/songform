@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { GripVertical, Trash2, Copy, Music, Search, ChevronDown, ChevronUp, MessageSquare, Drum } from 'lucide-react'
+import { GripVertical, Trash2, Copy, Music, Search, ChevronDown, ChevronUp, Drum } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import KeySelector from './KeySelector'
@@ -196,9 +196,9 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
               <Drum size={11} />
               연주 정보
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              {/* BPM */}
-              <div>
+            <div className="flex gap-2">
+              {/* BPM (음원번호 입력과 같은 너비) */}
+              <div className="w-48 flex-shrink-0">
                 <span className="text-xs text-gray-500 mb-1 block">연주 속도(BPM)</span>
                 <input
                   type="number"
@@ -210,7 +210,7 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
                 />
               </div>
               {/* 연주 스타일 */}
-              <div>
+              <div className="flex-1">
                 <span className="text-xs text-gray-500 mb-1 block">연주 스타일</span>
                 <input
                   type="text"
@@ -221,13 +221,27 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
                 />
               </div>
             </div>
+            {/* 송폼 코멘트 */}
+            <div>
+              <label className="label flex items-center gap-1.5">
+                송폼 코멘트
+                <span className="text-gray-600 font-normal">(PPT 악보 하단에 적색으로 표시)</span>
+              </label>
+              <textarea
+                className="input resize-none"
+                rows={2}
+                placeholder="악보 연주 시 참고 사항, 특이사항 등..."
+                value={song.comment || ''}
+                onChange={e => onUpdate({ comment: e.target.value })}
+              />
+            </div>
             {/* 건반1 */}
             <div>
-              <span className="text-xs text-gray-500 mb-1 block">건반 1</span>
+              <span className="text-xs text-gray-500 mb-1 block">건반 1 <span className="text-gray-600">(선택)</span></span>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  className="input w-24 flex-shrink-0"
+                  className="input w-48 flex-shrink-0"
                   placeholder="음원번호"
                   value={song.keyboard1_sound_no || ''}
                   onChange={e => onUpdate({ keyboard1_sound_no: e.target.value })}
@@ -243,11 +257,11 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
             </div>
             {/* 건반2 */}
             <div>
-              <span className="text-xs text-gray-500 mb-1 block">건반 2</span>
+              <span className="text-xs text-gray-500 mb-1 block">건반 2 <span className="text-gray-600">(선택)</span></span>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  className="input w-24 flex-shrink-0"
+                  className="input w-48 flex-shrink-0"
                   placeholder="음원번호"
                   value={song.keyboard2_sound_no || ''}
                   onChange={e => onUpdate({ keyboard2_sound_no: e.target.value })}
@@ -261,22 +275,6 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
                 />
               </div>
             </div>
-          </div>
-
-          {/* 송폼 코멘트 */}
-          <div>
-            <label className="label flex items-center gap-1.5">
-              <MessageSquare size={11} />
-              송폼 코멘트
-              <span className="text-gray-600 font-normal">(PPT 악보 하단에 적색으로 표시)</span>
-            </label>
-            <textarea
-              className="input resize-none"
-              rows={2}
-              placeholder="악보 연주 시 참고 사항, 특이사항 등..."
-              value={song.comment || ''}
-              onChange={e => onUpdate({ comment: e.target.value })}
-            />
           </div>
 
           {/* 악보 이미지 미리보기 */}
