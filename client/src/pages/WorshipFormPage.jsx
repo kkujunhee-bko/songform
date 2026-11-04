@@ -6,12 +6,14 @@ import {
 import {
   SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove,
 } from '@dnd-kit/sortable'
-import { Plus, Save, FileDown, ArrowLeft, Loader, User, Eye } from 'lucide-react'
+import { Plus, Save, FileDown, ArrowLeft, Loader, User, Eye, ClipboardPaste } from 'lucide-react'
 import api from '../api/client'
 import { useSettingsStore } from '../store/settingsStore'
 import { useAuthStore } from '../store/authStore'
 import SongCard from '../components/worshipForm/SongCard'
 import FormElementPalette, { usePaletteDock, dockPaddingClass } from '../components/worshipForm/PaletteDock'
+import SongImportModal from '../components/worshipForm/SongImportModal'
+import { findSongByTitle, findCategory } from '../lib/songImport'
 import PptPreviewModal from '../components/worshipForm/PptPreviewModal'
 import { transposeKey } from '../lib/keyUtils'
 
@@ -114,6 +116,7 @@ export default function WorshipFormPage() {
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [savedFormId, setSavedFormId] = useState(null)
   const [leaderIds, setLeaderIds] = useState([])      // 선택된 인도자 ID 배열
   const [members, setMembers] = useState([])           // 전체 회원 목록
@@ -198,6 +201,33 @@ export default function WorshipFormPage() {
       }
       return newSong
     }))
+  }
+
+  // 붙여넣은 곡 목록을 반영: 날짜/구분 → 곡(등록된 곡과 제목이 같으면 연결) → 빈 칸부터 채우고 나머지는 추가
+  const handleImportSongs = async ({ header, songs: parsedSongs }) => {
+    if (header?.date) setFormData(p => ({ ...p, worship_date: header.date }))
+    const cat = header ? findCategory(categories, header.categoryText) : null
+    if (cat) setFormData(p => ({ ...p, category_id: cat.id }))
+
+    const matches = await Promise.all(parsedSongs.map(s => findSongByTitle(api, s.title)))
+    const built = parsedSongs.map((s, i) => ({
+      ...DEFAULT_SONG(),
+      song_title: matches[i]?.title || s.title,
+      song_id: matches[i]?.id ?? null,
+      performance_key: s.key,
+      comment: s.comment,
+      sheet_music_url: matches[i]?.sheet_music_url || null,
+    }))
+
+    setSongs(prev => {
+      const isEmpty = (s) => !s.song_title && !s.comment && !s.sheet_music_url && (!s.form_flow || s.form_flow.length === 0)
+      const next = [...prev]
+      let b = 0
+      for (let i = 0; i < next.length && b < built.length; i++) {
+        if (isEmpty(next[i])) next[i] = { ...built[b++], uid: next[i].uid }
+      }
+      return [...next, ...built.slice(b)]
+    })
   }
 
   const addSong = () => setSongs(prev => [...prev, DEFAULT_SONG()])
@@ -475,10 +505,18 @@ export default function WorshipFormPage() {
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
             찬양 목록 ({songs.filter(s => s.song_title?.trim()).length}/{songs.length}곡)
           </h2>
-          <button className="btn btn-ghost text-sm" onClick={addSong}>
-            <Plus size={14} />
-            곡 추가
-          </button>
+          <div className="flex items-center gap-1">
+            {!isEdit && (
+              <button className="btn btn-ghost text-sm" onClick={() => setShowImport(true)} title="곡 목록 텍스트 붙여넣기">
+                <ClipboardPaste size={14} />
+                가져오기
+              </button>
+            )}
+            <button className="btn btn-ghost text-sm" onClick={addSong}>
+              <Plus size={14} />
+              곡 추가
+            </button>
+          </div>
         </div>
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -541,6 +579,10 @@ export default function WorshipFormPage() {
           <span className="hidden sm:inline">저장</span>
         </button>
       </div>
+
+      {!isEdit && showImport && (
+        <SongImportModal onClose={() => setShowImport(false)} onImport={handleImportSongs} />
+      )}
 
       {/* PPT 미리보기 모달 */}
       {showPreview && (
