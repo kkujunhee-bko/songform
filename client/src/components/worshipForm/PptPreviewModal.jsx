@@ -184,7 +184,7 @@ function SongSlide({ song, index, pageIdx = 0, sheetUrl, formElements }) {
   // 상단 번호 뱃지 위치/크기 (px, BH=1000 기준)
   const BADGE_X = 10, BADGE_Y = 5, BADGE_W = 50, BADGE_H = 50
 
-  // 송폼 흐름 아이콘 시작 위치 (뱃지 우측)
+  // 송폼 순서 아이콘 시작 위치 (뱃지 우측)
   const FLOW_START_X = 70, FLOW_Y = 5
 
   // 코멘트 영역: PPT 12pt 기준 환산 (12 / 72 × 100 ≈ 17px)
@@ -214,7 +214,7 @@ function SongSlide({ song, index, pageIdx = 0, sheetUrl, formElements }) {
         <span style={{ fontSize: 20, fontWeight: 'bold', color: '#000000' }}>{index + 1}</span>
       </div>
 
-      {/* 송폼 흐름 아이콘: 뱃지 우측, 최대 2행
+      {/* 송폼 순서 아이콘: 뱃지 우측, 최대 2행
           PPT pt → 미리보기 px 환산: pt × (100 / 72)
           메인 16pt→22px / rSuffix 12pt→17px / 화살표 13pt→18px */}
       {flowItems.length > 0 && (

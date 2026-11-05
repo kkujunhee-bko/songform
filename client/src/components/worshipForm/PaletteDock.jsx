@@ -56,7 +56,7 @@ function useMainBounds() {
   return bounds
 }
 
-// 드래그하여 송폼 흐름에 요소를 추가하는 이동/접기/도킹 가능 툴바
+// 드래그하여 송폼 순서에 요소를 추가하는 이동/접기/도킹 가능 툴바
 export default function FormElementPalette({ dock, setDock }) {
   const formElements = useSettingsStore(s => s.formElements)
   const panelRef = useRef(null)
@@ -199,7 +199,7 @@ export default function FormElementPalette({ dock, setDock }) {
 
         {!dock.collapsed && (
           <div className="p-2">
-            <div className="text-[11px] text-gray-600 mb-2">끌어서 송폼 흐름에 놓으세요</div>
+            <div className="text-[11px] text-gray-600 mb-2">끌어서 송폼 순서에 놓으세요</div>
             <div className="flex flex-col gap-1.5 max-h-[calc(100vh-10rem)] overflow-y-auto pr-0.5">
               {formElements.map(el => (
                 <div

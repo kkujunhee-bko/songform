@@ -202,7 +202,7 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
       align: 'left', valign: 'middle',
     });
 
-    // 송폼 흐름 (1줄) + 코멘트 (줄바꿈 반영, 최대 MAX_COMMENT_LINES줄)
+    // 송폼 순서 (1줄) + 코멘트 (줄바꿈 반영, 최대 MAX_COMMENT_LINES줄)
     if (row.subH > 0) {
       const flowStr = row.flowItems.length > 0
         ? truncateToWidth(row.flowItems.map(it => it.initial + it.rSuffix).join(' → '), LIST_W, 12)
@@ -243,7 +243,7 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
     for (let pi = 0; pi < pageCount; pi++) {
     const slide = pptx.addSlide();
 
-    // 악보 위에 직접 배치한 송폼 요소 + 상단 송폼 흐름
+    // 악보 위에 직접 배치한 송폼 요소 + 상단 송폼 순서
     const allMarks = parseFormFlow(song.sheet_flow_marks);
     const pageMarks = allMarks.filter(m => (m.page || 0) === pi);
     const formFlow = parseFormFlow(song.form_flow);

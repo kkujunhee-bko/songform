@@ -493,9 +493,9 @@ export default function WorshipFormPage() {
           </div>
         </div>
 
-        {/* 메모 */}
+        {/* 예배 메모 */}
         <div className="mt-4">
-          <label className="label">메모 (선택)</label>
+          <label className="label">예배 메모 (선택)</label>
           <input
             className="input"
             placeholder="예배 관련 메모..."
@@ -607,7 +607,7 @@ export default function WorshipFormPage() {
       )}
       </div>
 
-      {/* 송폼 요소 툴바 (드래그하여 송폼 흐름에 추가) */}
+      {/* 송폼 요소 툴바 (드래그하여 송폼 순서에 추가) */}
       <FormElementPalette dock={paletteDock} setDock={setPaletteDock} />
     </div>
   )

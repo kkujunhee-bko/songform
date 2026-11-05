@@ -107,7 +107,7 @@ export default function PresetEditPage() {
           </div>
         </div>
 
-        {/* 송폼 흐름 빌더 */}
+        {/* 송폼 순서 빌더 */}
         <div className="card">
           <FormFlowBuilder flow={flow} onChange={setFlow} />
         </div>

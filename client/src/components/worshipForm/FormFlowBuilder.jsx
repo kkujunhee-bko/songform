@@ -117,7 +117,7 @@ function PresetModal({ onClose, onSelect }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-800">
           <div className="flex items-center gap-2">
             <LayoutTemplate size={18} className="text-indigo-400" />
-            <span className="font-semibold text-white">송폼 흐름 프리셋 선택</span>
+            <span className="font-semibold text-white">송폼 순서 프리셋 선택</span>
           </div>
           <button
             type="button"
@@ -174,7 +174,7 @@ function PresetModal({ onClose, onSelect }) {
                             ))}
                           </div>
                         ) : (
-                          <span className="text-xs text-gray-600">흐름 없음</span>
+                          <span className="text-xs text-gray-600">순서 없음</span>
                         )}
                       </button>
                     ))}
@@ -299,7 +299,7 @@ export default function FormFlowBuilder({ flow, onChange, enablePreset = false, 
       <div>
         <div className="flex items-center justify-between mb-1">
           <label className="label mb-0">
-            송폼 흐름
+            송폼 순서
             {flow.length > 0 && (
               <>
                 <span className="ml-1 text-gray-600">({flow.length}개</span>
@@ -314,8 +314,8 @@ export default function FormFlowBuilder({ flow, onChange, enablePreset = false, 
             <button
               type="button"
               className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-gray-800 text-gray-400 border border-gray-700 hover:bg-red-900/40 hover:text-red-300 hover:border-red-800 transition-colors"
-              onClick={() => { if (confirm('송폼 흐름을 모두 삭제하고 초기화할까요?')) onChange([]) }}
-              title="송폼 흐름 초기화"
+              onClick={() => { if (confirm('송폼 순서을 모두 삭제하고 초기화할까요?')) onChange([]) }}
+              title="송폼 순서 초기화"
             >
               <RotateCcw size={12} />
               <span>초기화</span>

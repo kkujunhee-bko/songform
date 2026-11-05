@@ -23,7 +23,7 @@
 찬양팀이 매주 예배 순서(송폼)를 체계적으로 관리하고, 악보를 연결하며, PPT로 출력할 수 있는 로컬 웹 애플리케이션입니다.
 
 ### 핵심 목표
-- 예배별 찬양 순서 · 키 · 송폼 흐름 관리
+- 예배별 찬양 순서 · 키 · 송폼 순서 관리
 - 네이버 이미지 검색 또는 직접 업로드로 악보 연결
 - 키(Key) 선택 → PPT 자동 생성
 - 역할별 접근 권한 관리
@@ -110,7 +110,7 @@ D:/Project/SongForm/
 │       │   └── worshipForm/
 │       │       ├── SongCard.jsx     # 찬양 카드 (드래그, 키선택, 악보)
 │       │       ├── KeySelector.jsx  # 키 이름 + 변화표 독립 라디오 UI
-│       │       ├── FormFlowBuilder.jsx # 송폼 흐름 빌더
+│       │       ├── FormFlowBuilder.jsx # 송폼 순서 빌더
 │       │       └── SheetMusicModal.jsx # 악보 검색 모달 (Portal 렌더)
 │       └── pages/
 │           ├── LoginPage.jsx
@@ -136,7 +136,7 @@ D:/Project/SongForm/
 | `song_form_elements` | 송폼 요소 (인트로, 절, 후렴 등) |
 | `songs` | 노래 마스터 (제목, 아티스트, 기본키, 악보URL) |
 | `worship_forms` | 예배 송폼 헤더 (날짜, 카테고리, 절기 등) |
-| `worship_form_songs` | 예배별 찬양 목록 (키, 송폼 흐름, 악보 등) |
+| `worship_form_songs` | 예배별 찬양 목록 (키, 송폼 순서, 악보 등) |
 | `app_settings` | 앱 설정 (JSONB key-value) |
 | `users` | 사용자 계정 (역할: admin/leader/user/coworker) |
 | `role_permissions` | 역할별 메뉴 권한 ← 신규 |
@@ -229,9 +229,9 @@ CREATE TABLE role_permissions (
 
 ### 6-1. 예배 송폼 관리
 
-- 날짜, 예배 카테고리, 절기(자동), 인도자, 메모 입력
+- 날짜, 예배 카테고리, 절기(자동), 인도자, 예배 메모 입력
 - 찬양 카드 드래그&드롭으로 순서 변경 (@dnd-kit)
-- 각 찬양별 키(Key), 송폼 흐름, 악보, 코멘트 입력
+- 각 찬양별 키(Key), 송폼 순서, 악보, 코멘트 입력
 - 저장 후 PPT 내보내기
 
 ### 6-2. 키(Key) 선택기
@@ -261,7 +261,7 @@ CREATE TABLE role_permissions (
 ### 6-4. PPT 내보내기
 
 - `/api/export/pptx/:formId` 호출 → `.pptx` 바이너리 다운로드
-- 각 슬라이드: 찬양 제목, 키, 송폼 흐름, 코멘트, 악보 이미지 포함
+- 각 슬라이드: 찬양 제목, 키, 송폼 순서, 코멘트, 악보 이미지 포함
 
 ---
 
@@ -375,7 +375,7 @@ npm run migrate
 
 - 예배 송폼 생성/편집/삭제
 - 찬양 목록 드래그&드롭 정렬
-- 키 선택, 송폼 흐름 빌더
+- 키 선택, 송폼 순서 빌더
 - PPT 내보내기
 - 절기 자동 계산 (Easter 알고리즘)
 - 로그인/JWT 인증

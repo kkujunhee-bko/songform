@@ -195,7 +195,7 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
             onChange={handleKeyChange}
           />
 
-          {/* 송폼 흐름 빌더 */}
+          {/* 송폼 순서 빌더 */}
           <FormFlowBuilder
             flow={song.form_flow || []}
             onChange={(flow) => onUpdate({ form_flow: flow })}

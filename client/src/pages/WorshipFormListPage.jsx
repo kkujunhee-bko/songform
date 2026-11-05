@@ -194,11 +194,8 @@ export default function WorshipFormListPage() {
 
   // 요일 표시: 일요일 → "주일", 나머지 → 앞글자만 (월/화/수/목/금/토)
   // 절기가 있으면 뒤에 "(부활절)" 형태로 붙임
-  const getDayLabel = (dateStr, seasonName) => {
-    const day = parseDateStr(dateStr).getDay()
-    const dayLabel = day === 0 ? '주일' : ['일','월','화','수','목','금','토'][day]
-    return seasonName ? `${dayLabel}(${seasonName})` : dayLabel
-  }
+  // 요일은 표시하지 않고 절기만 괄호로 표시
+  const getDayLabel = (dateStr, seasonName) => (seasonName ? `(${seasonName})` : '')
 
   const categoryOptions = useMemo(
     () => [...new Set(forms.map(f => f.category_name).filter(Boolean))].sort(),
@@ -291,7 +288,7 @@ export default function WorshipFormListPage() {
           <input
             type="text"
             className="input pl-9 pr-9 w-full"
-            placeholder="날짜, 곡 제목, 절기, 메모로 검색..."
+            placeholder="날짜, 곡 제목, 절기, 예배 메모로 검색..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
@@ -336,13 +333,15 @@ export default function WorshipFormListPage() {
               {/* 메인 행: 날짜 + 구분선 + 내용 + (sm+ 액션버튼) */}
               <div className="flex items-start gap-3">
                 {/* 날짜 영역 */}
-                <div className="w-14 sm:w-20 text-center flex-shrink-0 pt-0.5">
+                <div className="w-[5.25rem] sm:w-[7.5rem] text-center flex-shrink-0 pt-0.5">
                   <div className="text-base sm:text-lg font-bold text-blue-400 leading-tight">
                     {parseDateStr(form.worship_date).getMonth() + 1}월 {parseDateStr(form.worship_date).getDate()}일
                   </div>
-                  <div className="text-xs text-gray-500 leading-snug">
-                    {getDayLabel(form.worship_date, form.liturgical_season_name)}
-                  </div>
+                  {form.liturgical_season_name && (
+                    <div className="text-xs text-gray-500 leading-snug">
+                      {getDayLabel(form.worship_date, form.liturgical_season_name)}
+                    </div>
+                  )}
                   <div className="text-xs text-gray-600">{parseDateStr(form.worship_date).getFullYear()}</div>
                 </div>
 
@@ -355,25 +354,26 @@ export default function WorshipFormListPage() {
                     <span className="font-semibold text-white text-sm">
                       <Highlight text={form.category_name} query={searchQuery.trim()} />
                     </span>
-                    <span className="flex items-center gap-1 text-xs text-gray-500">
-                      <Music size={11} />
-                      {form.song_count}곡
-                    </span>
+                    {/* 인도자 + (곡 수) */}
+                    {((Array.isArray(form.leader_names) && form.leader_names.length > 0) || form.song_count != null) && (
+                      <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                        {Array.isArray(form.leader_names) && form.leader_names.length > 0 && (
+                          <>
+                            <User size={10} className="text-gray-600 flex-shrink-0" />
+                            <span className="truncate">
+                              <Highlight text={form.leader_names.join(' · ')} query={searchQuery.trim()} />
+                            </span>
+                          </>
+                        )}
+                        <span className="text-gray-500">({form.song_count}곡)</span>
+                      </span>
+                    )}
                     {form.notes && (
                       <span className="text-xs text-gray-600 truncate hidden sm:inline max-w-xs">
                         <Highlight text={form.notes} query={searchQuery.trim()} />
                       </span>
                     )}
                   </div>
-                  {/* 인도자 */}
-                  {Array.isArray(form.leader_names) && form.leader_names.length > 0 && (
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <User size={10} className="text-gray-600 flex-shrink-0" />
-                      <span className="text-xs text-gray-400 truncate">
-                        <Highlight text={form.leader_names.join(' · ')} query={searchQuery.trim()} />
-                      </span>
-                    </div>
-                  )}
                   {/* 곡 제목 목록 */}
                   {Array.isArray(form.song_titles) && form.song_titles.length > 0 && (
                     <div className="flex flex-wrap gap-x-2 gap-y-0.5">

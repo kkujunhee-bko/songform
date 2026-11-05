@@ -141,7 +141,7 @@ html:not(.dark) aside.bg-gray-900 { background-color: #FFFFFF; }
 html:not(.dark) ::-webkit-scrollbar-thumb { background: #CBD5E1; }
 html:not(.dark) ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
-/* 요소 팔레트 / 송폼 흐름 순서 — 라이트 모드에서 배경 제거 */
+/* 요소 팔레트 / 송폼 순서 순서 — 라이트 모드에서 배경 제거 */
 html:not(.dark) .form-inner-section {
   background-color: transparent;
   border-color: #E2E8F0;

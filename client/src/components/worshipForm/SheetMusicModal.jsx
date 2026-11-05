@@ -408,7 +408,7 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                             )}
                             {Array.isArray(song.form_flow) && song.form_flow.length > 0 && (
                               <span className="text-[10px] px-1.5 py-0.5 bg-green-900/60 text-green-400 rounded">
-                                흐름 {song.form_flow.length}개
+                                순서 {song.form_flow.length}개
                               </span>
                             )}
                           </div>
