@@ -379,6 +379,12 @@ export default function SheetMusicModal({ songTitle, songId, onSelect, onClose }
                           >
                             <ImageIcon size={24} className="opacity-30" />
                           </div>
+                          {/* 여러 장짜리 악보: 전체 장수 표시 */}
+                          {Array.isArray(song.sheet_music_urls) && song.sheet_music_urls.length > 1 && (
+                            <span className="absolute top-1.5 right-1.5 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                              {song.sheet_music_urls.length}장
+                            </span>
+                          )}
                           {/* 호버 오버레이 */}
                           <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/15 transition-all flex items-center justify-center">
                             <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-blue-600 text-white text-xs font-medium px-3 py-1.5 rounded-full shadow-lg">
