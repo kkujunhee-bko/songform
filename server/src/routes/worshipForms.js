@@ -101,7 +101,7 @@ router.post('/', asyncHandler(async (req, res) => {
     const { song_id, song_title, performance_key = 'C', semitone_adjustment = 0,
             form_flow = [], sheet_music_url, sheet_music_urls, sheet_music_snapshot, comment,
             bpm, keyboard1_sound_no, keyboard1_sound_name,
-            keyboard2_sound_no, keyboard2_sound_name, play_style } = songs[i];
+            keyboard2_sound_no, keyboard2_sound_name, play_style, sheet_flow_marks = [] } = songs[i];
     if (!song_title) continue;
       const sheetUrls = getSheetUrls({ sheet_music_url, sheet_music_urls });
     await query(
@@ -109,15 +109,16 @@ router.post('/', asyncHandler(async (req, res) => {
          (form_id, song_id, song_title, sort_order, performance_key, semitone_adjustment,
           form_flow, sheet_music_url, sheet_music_urls, sheet_music_snapshot, comment,
           bpm, keyboard1_sound_no, keyboard1_sound_name,
-          keyboard2_sound_no, keyboard2_sound_name, play_style)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+          keyboard2_sound_no, keyboard2_sound_name, play_style, sheet_flow_marks)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
       [form.id, song_id || null, song_title, i, performance_key, semitone_adjustment,
        JSON.stringify(form_flow), sheetUrls[0] || sheet_music_url || null,
          JSON.stringify(sheetUrls),
        sheet_music_snapshot ? JSON.stringify(sheet_music_snapshot) : null,
        comment || null,
        bpm || null, keyboard1_sound_no || null, keyboard1_sound_name || null,
-       keyboard2_sound_no || null, keyboard2_sound_name || null, play_style || null]
+       keyboard2_sound_no || null, keyboard2_sound_name || null, play_style || null,
+       JSON.stringify(Array.isArray(sheet_flow_marks) ? sheet_flow_marks : [])]
     );
     if (!song_id && song_title) {
       const ex = await query('SELECT id FROM songs WHERE title ILIKE $1 LIMIT 1', [song_title]);
@@ -170,7 +171,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
       const { song_id, song_title, performance_key = 'C', semitone_adjustment = 0,
               form_flow = [], sheet_music_url, sheet_music_urls, sheet_music_snapshot, comment,
               bpm, keyboard1_sound_no, keyboard1_sound_name,
-              keyboard2_sound_no, keyboard2_sound_name, play_style } = songs[i];
+              keyboard2_sound_no, keyboard2_sound_name, play_style, sheet_flow_marks = [] } = songs[i];
       if (!song_title) continue;
       const sheetUrls = getSheetUrls({ sheet_music_url, sheet_music_urls });
       await query(
@@ -178,15 +179,16 @@ router.put('/:id', asyncHandler(async (req, res) => {
            (form_id, song_id, song_title, sort_order, performance_key, semitone_adjustment,
             form_flow, sheet_music_url, sheet_music_urls, sheet_music_snapshot, comment,
             bpm, keyboard1_sound_no, keyboard1_sound_name,
-            keyboard2_sound_no, keyboard2_sound_name, play_style)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+            keyboard2_sound_no, keyboard2_sound_name, play_style, sheet_flow_marks)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
         [id, song_id || null, song_title, i, performance_key, semitone_adjustment,
          JSON.stringify(form_flow), sheetUrls[0] || sheet_music_url || null,
          JSON.stringify(sheetUrls),
          sheet_music_snapshot ? JSON.stringify(sheet_music_snapshot) : null,
          comment || null,
          bpm || null, keyboard1_sound_no || null, keyboard1_sound_name || null,
-         keyboard2_sound_no || null, keyboard2_sound_name || null, play_style || null]
+         keyboard2_sound_no || null, keyboard2_sound_name || null, play_style || null,
+       JSON.stringify(Array.isArray(sheet_flow_marks) ? sheet_flow_marks : [])]
       );
     }
   }

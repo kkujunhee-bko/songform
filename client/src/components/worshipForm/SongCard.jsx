@@ -1,16 +1,19 @@
 import { useState } from 'react'
-import { GripVertical, Trash2, Copy, Music, Search, ChevronDown, ChevronUp, Drum } from 'lucide-react'
+import { GripVertical, Trash2, Copy, Music, Search, ChevronDown, ChevronUp, Drum, MapPin } from 'lucide-react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import KeySelector from './KeySelector'
 import FormFlowBuilder from './FormFlowBuilder'
 import SheetMusicModal from './SheetMusicModal'
+import SheetMarkEditor from './SheetMarkEditor'
 import api from '../../api/client'
 import { getSheetUrls, sheetPatch } from '../../lib/sheetUrls'
+import { getSheetMarks, marksOfPage } from '../../lib/sheetMarks'
 
 export default function SongCard({ song, index, total = 20, onUpdate, onRemove, onDuplicate }) {
   const [expanded, setExpanded] = useState(true)
   const [showSheetMusic, setShowSheetMusic] = useState(false)
+  const [markPage, setMarkPage] = useState(null)   // 송폼 배치 편집 중인 악보 장 인덱스
   const [titleSuggestions, setTitleSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
 
@@ -46,6 +49,7 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
   }
 
   const sheetUrls = getSheetUrls(song)
+  const sheetMarks = getSheetMarks(song)
 
   const handleKeyChange = ({ key, semitone }) => {
     onUpdate({ performance_key: key, semitone_adjustment: semitone })
@@ -63,6 +67,7 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
           ? (data.append ? [...getSheetUrls(song), ...data.sheet_music_urls] : data.sheet_music_urls)
           : (data.sheet_music_url ? [data.sheet_music_url] : [])
       ),
+      sheet_flow_marks: data.append ? sheetMarks : [],
       sheet_music_snapshot: data.sheet_music_data,
       ...(data.form_flow ? { form_flow: data.form_flow } : {}),
     })
@@ -296,7 +301,7 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
                   className="ml-auto text-xs text-gray-600 hover:text-red-400 transition-colors"
                   onClick={() => {
                     if (window.confirm(sheetUrls.length > 1 ? '첨부 악보를 모두 삭제 하시겠습니까?' : '첨부 악보를 삭제 하시겠습니까?')) {
-                      onUpdate(sheetPatch([]))
+                      onUpdate({ ...sheetPatch([]), sheet_flow_marks: [] })
                     }
                   }}
                   title="악보 모두 제거"
@@ -307,13 +312,34 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
               <div className="flex flex-wrap gap-2">
                 {sheetUrls.map((url, i) => (
                   <div key={`${url}-${i}`} className="relative group">
-                    <a href={url} target="_blank" rel="noopener noreferrer" className="block">
-                      <img
-                        src={url}
-                        alt={`악보 ${i + 1}`}
-                        className="max-h-56 w-auto rounded-lg border border-gray-700 hover:border-blue-500 transition-colors object-contain bg-gray-800"
-                      />
-                    </a>
+                    <div className="relative">
+                      <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+                        <img
+                          src={url}
+                          alt={`악보 ${i + 1}`}
+                          className="max-h-56 w-auto rounded-lg border border-gray-700 hover:border-blue-500 transition-colors object-contain bg-gray-800"
+                        />
+                      </a>
+                      {/* 배치된 송폼 요소 미리보기 */}
+                      {marksOfPage(sheetMarks, i).map(m => (
+                        <span
+                          key={m.uid}
+                          className="absolute pointer-events-none text-red-600 font-bold text-[10px] leading-none whitespace-nowrap bg-white/60 rounded px-0.5"
+                          style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%`, transform: 'translate(-50%, -50%)' }}
+                        >
+                          {m.name}{m.repeat > 1 ? `x${m.repeat}` : ''}
+                        </span>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="mt-1 w-full flex items-center justify-center gap-1 text-xs px-2 py-1 rounded-lg bg-indigo-900/40 text-indigo-300 border border-indigo-800 hover:bg-indigo-800/50 transition-colors"
+                      onClick={() => setMarkPage(i)}
+                      title="악보 위에 송폼 요소를 끌어서 배치"
+                    >
+                      <MapPin size={12} />
+                      송폼 설정{marksOfPage(sheetMarks, i).length > 0 && ` (${marksOfPage(sheetMarks, i).length})`}
+                    </button>
                     {sheetUrls.length > 1 && (
                       <>
                         <span className="absolute top-1 left-1 bg-black/70 text-white text-xs font-bold px-1.5 py-0.5 rounded">{i + 1}</span>
@@ -321,7 +347,12 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
                           type="button"
                           className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 hover:bg-red-600 text-white text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity"
                           title="이 악보만 삭제"
-                          onClick={() => onUpdate(sheetPatch(sheetUrls.filter((_, j) => j !== i)))}
+                          onClick={() => onUpdate({
+                            ...sheetPatch(sheetUrls.filter((_, j) => j !== i)),
+                            sheet_flow_marks: sheetMarks
+                              .filter(m => (m.page || 0) !== i)
+                              .map(m => (m.page || 0) > i ? { ...m, page: m.page - 1 } : m),
+                          })}
                         >
                           ✕
                         </button>
@@ -333,6 +364,18 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
             </div>
           )}
         </div>
+      )}
+
+      {/* 악보 위 송폼 배치 편집기 */}
+      {markPage !== null && sheetUrls[markPage] && (
+        <SheetMarkEditor
+          sheetUrl={sheetUrls[markPage]}
+          page={markPage}
+          pageCount={sheetUrls.length}
+          marks={sheetMarks}
+          onSave={(next) => { onUpdate({ sheet_flow_marks: next }); setMarkPage(null) }}
+          onClose={() => setMarkPage(null)}
+        />
       )}
 
       {/* 악보 검색 모달 */}

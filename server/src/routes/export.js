@@ -243,7 +243,10 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
     for (let pi = 0; pi < pageCount; pi++) {
     const slide = pptx.addSlide();
 
-    const formFlow = parseFormFlow(song.form_flow);
+    // 악보 위에 직접 배치한 송폼 요소가 있으면 그것을 사용, 없으면 기존처럼 상단에 흐름 표시
+    const allMarks = parseFormFlow(song.sheet_flow_marks);
+    const pageMarks = allMarks.filter(m => (m.page || 0) === pi);
+    const formFlow = allMarks.length > 0 ? [] : parseFormFlow(song.form_flow);
 
     // ── ① 악보 이미지: 5% 축소 후 슬라이드 중앙 배치 ──
     const IMG_W = 7.5 * 0.95;          // 7.125"
@@ -393,6 +396,21 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
         });
       }
     }
+
+    // ── ③-2 악보 위에 배치된 송폼 요소 (x,y = 요소 중심, 슬라이드 비율) ──
+    pageMarks.forEach(m => {
+      const name = m.name || '?';
+      const rSuffix = m.repeat && m.repeat > 1 ? `x${m.repeat}` : '';
+      const cw = (ch) => /[가-힣ㄱ-ㅣ]/.test(ch) ? 0.18 : /[A-Za-z]/.test(ch) ? 0.14 : 0.11;
+      const tw = (t) => Math.max([...t].reduce((a, c) => a + cw(c), 0) + 0.06, 0.15);
+      const w = tw(name) + (rSuffix ? tw(rSuffix) + 0.02 : 0);
+      const h = 0.4;
+      const x = Math.min(Math.max(m.x * 7.5 - w / 2, 0), 7.5 - w);
+      const y = Math.min(Math.max(m.y * 10 - h / 2, 0), 10 - h);
+      const runs = [{ text: name, options: { fontSize: 16, bold: true, color: 'DC2626', fontFace: 'Noto Sans KR' } }];
+      if (rSuffix) runs.push({ text: rSuffix, options: { fontSize: 12, bold: true, color: 'DC2626', fontFace: 'Noto Sans KR' } });
+      slide.addText(runs, { x, y, w, h, align: 'center', valign: 'middle', wrap: false });
+    });
 
     // ── ④ 코멘트: 슬라이드 최하단, 우측 정렬 (12pt = 미리보기 26px × 0.75 보정) ──
     if (song.comment && song.comment.trim()) {

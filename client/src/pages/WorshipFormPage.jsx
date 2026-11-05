@@ -14,6 +14,7 @@ import SongCard from '../components/worshipForm/SongCard'
 import FormElementPalette, { usePaletteDock, dockPaddingClass } from '../components/worshipForm/PaletteDock'
 import SongImportModal from '../components/worshipForm/SongImportModal'
 import { getSheetUrls } from '../lib/sheetUrls'
+import { getSheetMarks } from '../lib/sheetMarks'
 import { findSongByTitle, findCategory } from '../lib/songImport'
 import PptPreviewModal from '../components/worshipForm/PptPreviewModal'
 import { transposeKey } from '../lib/keyUtils'
@@ -288,6 +289,7 @@ export default function WorshipFormPage() {
         form_flow: s.form_flow || [],
         sheet_music_url: s.sheet_music_url,
         sheet_music_urls: getSheetUrls(s),
+        sheet_flow_marks: getSheetMarks(s),
         sheet_music_snapshot: s.sheet_music_snapshot,
         comment: s.comment || '',
         bpm: s.bpm || null,

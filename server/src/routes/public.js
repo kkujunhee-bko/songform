@@ -27,7 +27,7 @@ router.get('/worship-forms/:token', asyncHandler(async (req, res) => {
   const form = formResult.rows[0];
   const songsResult = await query(
     `SELECT wfs.id, wfs.song_title, wfs.performance_key, wfs.semitone_adjustment,
-            wfs.form_flow, wfs.comment, wfs.sheet_music_urls,
+            wfs.form_flow, wfs.comment, wfs.sheet_music_urls, wfs.sheet_flow_marks,
             COALESCE(wfs.sheet_music_url, s.sheet_music_url) AS sheet_music_url
      FROM worship_form_songs wfs
      LEFT JOIN songs s ON wfs.song_id = s.id

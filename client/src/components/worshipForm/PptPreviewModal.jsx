@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, ChevronLeft, ChevronRight, Eye, FileDown, Loader, Share2, Check } from 'lucide-react'
 import { getSheetUrls } from '../../lib/sheetUrls'
+import { getSheetMarks, marksOfPage } from '../../lib/sheetMarks'
 import { useSettingsStore } from '../../store/settingsStore'
 
 const BW = 750
@@ -174,8 +175,11 @@ function CoverSlide({ categoryName, dateStr, leaderStr, season, songs, formEleme
   )
 }
 
-function SongSlide({ song, index, sheetUrl, formElements }) {
-  const flowItems = getFlowItems(song.form_flow, formElements)
+function SongSlide({ song, index, pageIdx = 0, sheetUrl, formElements }) {
+  // 악보 위에 직접 배치한 송폼 요소가 있으면 상단 흐름 대신 사용
+  const allMarks = getSheetMarks(song)
+  const pageMarks = marksOfPage(allMarks, pageIdx)
+  const flowItems = allMarks.length > 0 ? [] : getFlowItems(song.form_flow, formElements)
 
   // 상단 번호 뱃지 위치/크기 (px, BH=1000 기준)
   const BADGE_X = 10, BADGE_Y = 5, BADGE_W = 50, BADGE_H = 50
@@ -198,7 +202,7 @@ function SongSlide({ song, index, sheetUrl, formElements }) {
       {/* 악보 이미지: 슬라이드 전체를 이미지 영역으로 사용, contain으로 비율 유지
           → PPT 출력과 동일하게 여백은 이미지 자체 비율에서 자연 발생 */}
       {sheetUrl ? (
-        <img src={sheetUrl} alt="악보" style={{ position: 'absolute', left: '2.5%', top: '2.5%', width: '95%', height: '95%' }} />
+        <img src={sheetUrl} alt="악보" style={{ position: 'absolute', left: '2.5%', top: '2.5%', width: '95%', height: '95%', objectFit: 'contain' }} />
       ) : (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#CBD5E1', fontStyle: 'italic' }}>
           악보가 첨부되지 않았습니다.
@@ -224,6 +228,20 @@ function SongSlide({ song, index, sheetUrl, formElements }) {
           ))}
         </div>
       )}
+
+      {/* 악보 위에 배치된 송폼 요소 */}
+      {pageMarks.map(m => {
+        const cur = formElements?.find(fe => fe.id === m.id)
+        return (
+          <span key={m.uid} style={{
+            position: 'absolute', left: `${m.x * 100}%`, top: `${m.y * 100}%`, transform: 'translate(-50%, -50%)',
+            whiteSpace: 'nowrap', fontSize: 22, fontWeight: 'bold', color: '#DC2626', lineHeight: 1.2, zIndex: 1,
+          }}>
+            {cur?.name ?? m.name}
+            {m.repeat > 1 && <span style={{ fontSize: 17 }}>x{m.repeat}</span>}
+          </span>
+        )
+      })}
 
       {/* 코멘트: 하단 고정, 좌측 정렬, 줄바꿈(\n) 적용 */}
       {song.comment?.trim() && (
@@ -312,7 +330,7 @@ export default function PptPreviewModal({ onClose, onExport, exporting, formData
     ...filteredSongs.flatMap((song, i) => {
       const urls = getSheetUrls(song)
       return (urls.length > 0 ? urls : [null]).map((sheetUrl, pi) => ({
-        type: 'song', song, index: i, sheetUrl, key: `${song.uid || `song-${i}`}-${pi}`,
+        type: 'song', song, index: i, pageIdx: pi, sheetUrl, key: `${song.uid || `song-${i}`}-${pi}`,
       }))
     }),
   ]
@@ -345,7 +363,7 @@ export default function PptPreviewModal({ onClose, onExport, exporting, formData
     if (sd.type === 'cover') {
       return <CoverSlide categoryName={categoryName} dateStr={dateStr} leaderStr={leaderStr} season={season} songs={filteredSongs} formElements={formElements} />
     }
-    return <SongSlide song={sd.song} index={sd.index} sheetUrl={sd.sheetUrl} formElements={formElements} />
+    return <SongSlide song={sd.song} index={sd.index} pageIdx={sd.pageIdx} sheetUrl={sd.sheetUrl} formElements={formElements} />
   }
 
   // 현재 페이지에 보여줄 슬라이드
