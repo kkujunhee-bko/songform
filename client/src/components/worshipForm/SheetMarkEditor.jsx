@@ -6,35 +6,80 @@ import { useSettingsStore } from '../../store/settingsStore'
 const BW = 750
 const BH = 1000
 const MARK_MIME = 'application/x-songform-mark'
-const DOCK_KEY = 'songform-markeditor-dock'
+const DOCK_KEY = 'songform-markeditor-dock-v2'   // v2: 기본 위치 우측
 const DOCK_W = 192
+const DOCK_W_FLOOR = 110
 const DOCK_W_COLLAPSED = 44
+
+function measureMain() {
+  const main = document.querySelector('main')
+  if (!main) return { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
+  const r = main.getBoundingClientRect()
+  return { left: r.left, top: r.top, width: main.clientWidth, height: main.clientHeight }
+}
 
 const clamp = (v) => Math.min(1, Math.max(0, v))
 const newUid = () => `mk_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
 
 // 악보 한 장 위에 송폼 요소를 끌어다 배치하는 편집기
+// LNB 오른쪽 메인 영역 전체를 덮는 작업 화면으로 열린다 (LNB는 그대로 보임)
 // 송폼 요소 팔레트는 세로 도크(기본 좌측, 끌어서 우측 이동 / 접기 가능)
 export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSave, onClose }) {
   const formElements = useSettingsStore(s => s.formElements)
   // 이 장의 마커만 편집하고, 나머지 장의 마커는 그대로 보존
   const [pageMarks, setPageMarks] = useState(() => marks.filter(m => (m.page || 0) === page))
   const [selected, setSelected] = useState(null)
+  const rootRef = useRef(null)
   const bodyRef = useRef(null)
+  const measureFullRef = useRef(null)
+  const measureNameRef = useRef(null)
+  const [limits, setLimits] = useState({ min: DOCK_W_FLOOR, max: DOCK_W })
   const canvasRef = useRef(null)
   const dragRef = useRef(null)
   const [scale, setScale] = useState(0.6)
 
   const [dock, setDockState] = useState(() => {
-    try { return { side: 'left', collapsed: false, ...JSON.parse(localStorage.getItem(DOCK_KEY)) } }
-    catch { return { side: 'left', collapsed: false } }
+    try { return { side: 'right', collapsed: false, ...JSON.parse(localStorage.getItem(DOCK_KEY)) } }
+    catch { return { side: 'right', collapsed: false } }
   })
   const setDock = (next) => setDockState(prev => {
     const v = { ...prev, ...next }
     try { localStorage.setItem(DOCK_KEY, JSON.stringify(v)) } catch { /* ignore */ }
     return v
   })
+  // 너비 범위 측정: 최소 = 이니셜(이름)까지 보이는 폭, 최대 = 버튼 내용이 모두 보이는 폭
+  useEffect(() => {
+    const widest = (el) => Math.max(0, ...Array.from(el?.children || []).map(c => c.offsetWidth))
+    const extra = 16 + 8 + 1   // 패딩 + 스크롤바 + 경계선
+    const min = Math.max(DOCK_W_FLOOR, Math.ceil(widest(measureNameRef.current)) + extra)
+    const max = Math.max(min, Math.ceil(widest(measureFullRef.current)) + extra)
+    setLimits({ min, max })
+  }, [formElements])
+  const [resizing, setResizing] = useState(false)
+
   const [dockDrag, setDockDrag] = useState(null)   // 도크 이동 중 포인터 x 좌표
+
+  // 메인 영역(LNB 오른쪽) 좌표를 따라가는 오버레이 영역
+  const [area, setArea] = useState(() => measureMain())
+  useEffect(() => {
+    const update = () => setArea(measureMain())
+    update()
+    window.addEventListener('resize', update)
+    const main = document.querySelector('main')
+    const ro = main && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null
+    ro?.observe(main)
+    return () => { window.removeEventListener('resize', update); ro?.disconnect() }
+  }, [])
+
+  // 테두리 근처(SNAP px 이내)에 놓았을 때만 그쪽으로 도킹, 그 외에는 현재 위치 유지
+  const SNAP = 120
+  const snapSide = (clientX) => {
+    const r = rootRef.current?.getBoundingClientRect()
+    if (!r) return null
+    if (clientX <= r.left + SNAP) return 'left'
+    if (clientX >= r.right - SNAP) return 'right'
+    return null
+  }
 
   // 악보 한 장이 세로로 모두 보이도록 높이 기준으로 배율 계산
   useEffect(() => {
@@ -104,16 +149,44 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
   }
 
   const sel = pageMarks.find(m => m.uid === selected)
-  const dockW = dock.collapsed ? DOCK_W_COLLAPSED : DOCK_W
+  const dockW = dock.collapsed ? DOCK_W_COLLAPSED : Math.min(limits.max, Math.max(limits.min, dock.width || limits.max))
   // 접기 아이콘: 도크가 붙은 쪽으로 접히는 방향
   const CollapseIcon = (dock.side === 'left') === !dock.collapsed ? ChevronsLeft : ChevronsRight
-  const overRight = dockDrag !== null && dockDrag > window.innerWidth / 2
+  const dropSide = dockDrag !== null ? snapSide(dockDrag) : null
 
   const dockPanel = (
     <div
-      className="flex-none flex flex-col bg-gray-900 select-none"
+      className="relative flex-none flex flex-col bg-gray-900 select-none"
       style={{ width: dockW, [dock.side === 'left' ? 'borderRight' : 'borderLeft']: '1px solid #1f2937' }}
     >
+      {/* 너비 조절 핸들 (캔버스와 맞닿은 쪽 가장자리) */}
+      {!dock.collapsed && (
+        <div
+          className={`absolute inset-y-0 w-1.5 z-10 cursor-col-resize touch-none hover:bg-blue-500/40 ${resizing ? 'bg-blue-500/50' : ''} ${dock.side === 'left' ? 'right-0' : 'left-0'}`}
+          title="좌우로 끌어서 너비 조절"
+          onPointerDown={(e) => { if (e.button !== 0) return; e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); setResizing(true) }}
+          onPointerMove={(e) => {
+            if (!resizing) return
+            const r = rootRef.current.getBoundingClientRect()
+            const w = dock.side === 'left' ? e.clientX - r.left : r.right - e.clientX
+            setDock({ width: Math.round(Math.min(limits.max, Math.max(limits.min, w))) })
+          }}
+          onPointerUp={() => setResizing(false)}
+          onPointerCancel={() => setResizing(false)}
+        />
+      )}
+
+      {/* 너비 범위 측정용 (화면에 보이지 않음) */}
+      {[['full', measureFullRef], ['name', measureNameRef]].map(([mode, ref]) => (
+        <div key={mode} ref={ref} aria-hidden className="absolute invisible pointer-events-none flex flex-col" style={{ left: 0, top: 0 }}>
+          {formElements.map(el => (
+            <div key={el.id} className="flex items-center gap-1.5 px-2 py-1.5 border text-xs font-medium whitespace-nowrap w-max">
+              <span>{el.name}</span>{mode === 'full' && el.name_ko && <span>({el.name_ko})</span>}
+            </div>
+          ))}
+        </div>
+      ))}
+
       {/* 헤더: 잡고 끌어서 좌/우로 이동 */}
       <div
         className={`flex items-center gap-1 px-1.5 py-2 touch-none border-b border-gray-800 ${dockDrag !== null ? 'cursor-grabbing' : 'cursor-grab'} ${dock.collapsed ? 'flex-col' : 'justify-between'}`}
@@ -122,7 +195,7 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
         onPointerMove={(e) => { if (dockDrag !== null) setDockDrag(e.clientX) }}
         onPointerUp={(e) => {
           if (dockDrag === null) return
-          setDock({ side: e.clientX > window.innerWidth / 2 ? 'right' : 'left' })
+          { const side = snapSide(e.clientX); if (side) setDock({ side }) }
           setDockDrag(null)
         }}
         onPointerCancel={() => setDockDrag(null)}
@@ -155,11 +228,11 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
                   draggable
                   onDragStart={(e) => { e.dataTransfer.setData(MARK_MIME, JSON.stringify(el)); e.dataTransfer.effectAllowed = 'copy' }}
                   onClick={() => addMark(el)}
-                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium border cursor-grab active:cursor-grabbing transition-transform hover:scale-[1.03]"
+                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap overflow-hidden cursor-grab active:cursor-grabbing transition-transform hover:scale-[1.03]"
                   style={{ backgroundColor: el.color + '22', borderColor: el.color + '88', color: el.color }}
                 >
-                  <span className="truncate">{el.name}</span>
-                  {el.name_ko && <span className="opacity-70 truncate">({el.name_ko})</span>}
+                  <span className="shrink-0">{el.name}</span>
+                  {el.name_ko && <span className="opacity-70 truncate min-w-0">({el.name_ko})</span>}
                 </div>
               ))}
               {formElements.length === 0 && <span className="text-xs text-gray-600">환경설정에서 송폼 요소를 추가해주세요.</span>}
@@ -198,14 +271,22 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
   )
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex" style={{ backgroundColor: 'rgba(0,0,0,0.92)' }}>
+    <div
+      ref={rootRef}
+      className="fixed z-40 flex overflow-hidden bg-[#F1F5F9] dark:bg-gray-950"
+      style={{ left: area.left, top: area.top, width: area.width, height: area.height }}
+    >
+      {dockDrag !== null && ['left', 'right'].map(side => (
+        <div
+          key={side}
+          style={{ width: SNAP }}
+          className={`absolute inset-y-0 z-20 pointer-events-none transition-colors ${side === 'left' ? 'left-0 border-r-2' : 'right-0 border-l-2'} ${dropSide === side ? 'bg-blue-500/25 border-blue-500' : 'border-transparent'}`}
+        />
+      ))}
       {dock.side === 'left' && dockPanel}
 
       {/* 악보 캔버스: 세로 한 장이 모두 보이도록 높이에 맞춤 */}
       <div ref={bodyRef} className="flex-1 min-w-0 flex items-center justify-center overflow-hidden relative">
-        {dockDrag !== null && (
-          <div className={`absolute inset-y-0 w-1/2 z-10 pointer-events-none bg-blue-500/15 border-blue-500 ${overRight ? 'right-0 border-l-2' : 'left-0 border-r-2'}`} />
-        )}
         <div style={{ width: BW * scale, height: BH * scale, flexShrink: 0 }}>
           <div
             ref={canvasRef}

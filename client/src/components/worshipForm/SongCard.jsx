@@ -352,21 +352,24 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
                   </div>
                 ))}
               </div>
+
+              {/* 악보 위 송폼 배치 편집기 (카드 안에서 인라인으로 편집) */}
+              {markPage !== null && sheetUrls[markPage] && (
+                <div className="pt-2">
+                  <SheetMarkEditor
+                    key={markPage}
+                    sheetUrl={sheetUrls[markPage]}
+                    page={markPage}
+                    pageCount={sheetUrls.length}
+                    marks={sheetMarks}
+                    onSave={(next) => { onUpdate({ sheet_flow_marks: next }); setMarkPage(null) }}
+                    onClose={() => setMarkPage(null)}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
-      )}
-
-      {/* 악보 위 송폼 배치 편집기 */}
-      {markPage !== null && sheetUrls[markPage] && (
-        <SheetMarkEditor
-          sheetUrl={sheetUrls[markPage]}
-          page={markPage}
-          pageCount={sheetUrls.length}
-          marks={sheetMarks}
-          onSave={(next) => { onUpdate({ sheet_flow_marks: next }); setMarkPage(null) }}
-          onClose={() => setMarkPage(null)}
-        />
       )}
 
       {/* 악보 검색 모달 */}
