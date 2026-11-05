@@ -31,6 +31,14 @@ function parseFormFlow(raw) {
   return Array.isArray(raw) ? raw : JSON.parse(raw || '[]');
 }
 
+function getSongFlowItems(song) {
+  return parseFormFlow(song.form_flow).map(el => {
+    const initial = el.name || '?';
+    const rSuffix = el.repeat && el.repeat > 1 ? `x${el.repeat}` : '';
+    return { initial, rSuffix };
+  });
+}
+
 // 글자 하나의 대략적인 폭(인치, 12pt 기준) — 커버 슬라이드 흐름/코멘트 요약 줄바꿈 방지용
 function estimateTextWidth(text, ptSize = 12) {
   const charW = (ch) => (/[가-힣ㄱ-ㅣ]/.test(ch) ? 0.155 : /[A-Za-z0-9]/.test(ch) ? 0.09 : 0.08) * (ptSize / 12);
@@ -155,6 +163,7 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
   const SONG_START_Y = 5.18;
   const LIST_BOTTOM = 9.85;
   const TITLE_H = 0.30;
+  const FLOW_H = 0.18;
   const COMMENT_LINE_H = 0.16;
   const MAX_COMMENT_LINES = 3;
   const ROW_GAP = 0.04;
@@ -164,12 +173,14 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
   let cursor = SONG_START_Y;
   for (let i = 0; i < songs.length; i++) {
     const s = songs[i];
+    const flowItems = getSongFlowItems(s);
     const comment = (s.comment || '').trim();
     const commentLines = comment ? splitCommentLines(comment, MAX_COMMENT_LINES) : [];
-    const subH = commentLines.length * COMMENT_LINE_H;
+    const flowH = flowItems.length > 0 ? FLOW_H : 0;
+    const subH = flowH + commentLines.length * COMMENT_LINE_H;
     const h = TITLE_H + subH;
     if (coverRows.length > 0 && cursor + h > LIST_BOTTOM) break;
-    coverRows.push({ song: s, index: i, top: cursor, titleH: TITLE_H, subH, commentLines });
+    coverRows.push({ song: s, index: i, top: cursor, titleH: TITLE_H, subH, flowItems, commentLines });
     cursor += h + ROW_GAP;
   }
   const overflowCount = songs.length - coverRows.length;
@@ -193,9 +204,16 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
 
     // 송폼 흐름 (1줄) + 코멘트 (줄바꿈 반영, 최대 MAX_COMMENT_LINES줄)
     if (row.subH > 0) {
-      const lineCount = row.commentLines.length;
+      const flowStr = row.flowItems.length > 0
+        ? truncateToWidth(row.flowItems.map(it => it.initial + it.rSuffix).join(' → '), LIST_W, 12)
+        : '';
+      const lineCount = (flowStr ? 1 : 0) + row.commentLines.length;
       let lineIdx = 0;
       const subParts = [];
+      if (flowStr) {
+        lineIdx++;
+        subParts.push({ text: flowStr, options: { color: 'DC2626', bold: true, fontSize: 12, breakLine: lineIdx < lineCount } });
+      }
       row.commentLines.forEach(line => {
         lineIdx++;
         subParts.push({ text: truncateToWidth(line, LIST_W, 12), options: { color: '64748B', fontSize: 12, breakLine: lineIdx < lineCount } });
@@ -225,9 +243,10 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
     for (let pi = 0; pi < pageCount; pi++) {
     const slide = pptx.addSlide();
 
-    // 악보 위에 직접 배치한 송폼 요소
+    // 악보 위에 직접 배치한 송폼 요소 + 상단 송폼 흐름
     const allMarks = parseFormFlow(song.sheet_flow_marks);
     const pageMarks = allMarks.filter(m => (m.page || 0) === pi);
+    const formFlow = parseFormFlow(song.form_flow);
 
     // ── ① 악보 이미지: 5% 축소 후 슬라이드 중앙 배치 ──
     const IMG_W = 7.5 * 0.95;          // 7.125"
@@ -276,6 +295,107 @@ router.post('/pptx/:formId', asyncHandler(async (req, res) => {
       fontSize: 15, bold: true, color: '000000',
       align: 'center', valign: 'middle',
     });
+
+    // ── ③ 흐름 아이콘: 빨간 bold 텍스트, 최대 2행 지원 ──
+    if (formFlow.length > 0) {
+      const ICON_H  = BADGE_H;                        // 0.50"
+      const ARR_W   = 0.15;
+      const GAP     = 0.05;
+      const ROW_GAP = 0.05;
+      const START_X = BADGE_X + BADGE_W + 0.10;       // 0.70"
+      const AVAIL_W = 7.5 - START_X - 0.10;           // 6.70"
+
+      // 글자 종류별 너비(인치): 한글 > 영문 > 숫자/기타
+      const charW  = (ch) => /[가-힣ㄱ-ㅣ]/.test(ch) ? 0.18 : /[A-Za-z]/.test(ch) ? 0.14 : 0.11;
+      const textIw = (text) => Math.max([...text].reduce((s, c) => s + charW(c), 0) + 0.06, 0.15);
+
+      // 모든 아이템 계산: 등록한 이름 그대로 표시
+      const allItems = formFlow.map(el => {
+        const initial = (el.name || '?');
+        const rSuffix = el.repeat && el.repeat > 1 ? `x${el.repeat}` : '';
+        const iw      = textIw(initial) + (rSuffix ? textIw(rSuffix) + 0.02 : 0);
+        return { initial, rSuffix, iw };
+      });
+
+      // 행 분배: 너비 초과 시 다음 행으로 (반복 아이템은 GAP 2배 적용)
+      const allRows = [];
+      let curRow = [], curW = 0;
+      for (const item of allItems) {
+        const g = item.rSuffix ? GAP * 2 : GAP;
+        const addW = item.iw + (curRow.length > 0 ? ARR_W + g * 2 : 0);
+        if (curRow.length > 0 && curW + addW > AVAIL_W) {
+          allRows.push(curRow);
+          curRow = [item];
+          curW   = item.iw;
+        } else {
+          if (curRow.length > 0) curW += ARR_W + g * 2;
+          curRow.push(item);
+          curW += item.iw;
+        }
+      }
+      if (curRow.length > 0) allRows.push(curRow);
+
+      // 최대 3행만 표시
+      const rows         = allRows.slice(0, 3);
+      const shownCount   = rows.reduce((s, r) => s + r.length, 0);
+      const overflowCount = allItems.length - shownCount;
+
+      // 렌더링
+      rows.forEach((rowItems, ri) => {
+        const iy = BADGE_Y + ri * (ICON_H + ROW_GAP);
+        let fx   = START_X;
+
+        rowItems.forEach((item, fi) => {
+          const { initial, rSuffix, iw } = item;
+
+          if (rSuffix) {
+            // 메인 글자 크게(16pt), x·숫자는 작게(12pt) — wrap 방지
+            slide.addText([
+              { text: initial, options: { fontSize: 16, bold: true, color: 'DC2626', fontFace: 'Noto Sans KR' } },
+              { text: rSuffix, options: { fontSize: 12, bold: true, color: 'DC2626', fontFace: 'Noto Sans KR' } },
+            ], { x: fx, y: iy, w: iw, h: ICON_H, align: 'center', valign: 'middle', wrap: false });
+          } else {
+            slide.addText(initial, {
+              x: fx, y: iy, w: iw, h: ICON_H,
+              fontSize: 16, bold: true, color: 'DC2626',
+              fontFace: 'Noto Sans KR',
+              align: 'center', valign: 'middle', wrap: false,
+            });
+          }
+
+          const g = rSuffix ? GAP * 2 : GAP;
+          fx += iw + g;
+
+          // 화살표: 행 마지막 아이템 제외
+          if (fi < rowItems.length - 1) {
+            slide.addText('→', {
+              x: fx, y: iy, w: ARR_W, h: ICON_H,
+              fontSize: 13, bold: true, color: 'DC2626',
+              align: 'center', valign: 'middle',
+              fontFace: 'Noto Sans KR',
+            });
+            fx += ARR_W + g;
+          }
+        });
+      });
+
+      // 2행 초과 시 +N 표시
+      if (overflowCount > 0) {
+        const lastRow = rows[rows.length - 1];
+        const lastRi  = rows.length - 1;
+        const iy = BADGE_Y + lastRi * (ICON_H + ROW_GAP);
+        let fx = START_X;
+        lastRow.forEach((item, fi) => {
+          const g = item.rSuffix ? GAP * 2 : GAP;
+          fx += item.iw + g;
+          if (fi < lastRow.length - 1) fx += ARR_W + g;
+        });
+        slide.addText(`+${overflowCount}`, {
+          x: fx, y: iy, w: 0.35, h: ICON_H,
+          fontSize: 14, bold: true, color: 'DC2626', align: 'left', valign: 'middle',
+        });
+      }
+    }
 
     // ── ③-2 악보 위에 배치된 송폼 요소 (x,y = 요소 중심, 슬라이드 비율) ──
     pageMarks.forEach(m => {

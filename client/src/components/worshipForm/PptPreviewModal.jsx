@@ -14,6 +14,16 @@ function formatDate(dateStr) {
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`
 }
 
+function getFlowItems(formFlow, formElements) {
+  return (Array.isArray(formFlow) ? formFlow : []).map(el => {
+    const current = formElements?.find(fe => fe.id === el.id)
+    const initial = current?.name ?? el.name ?? '?'
+    const rSuffix = el.repeat && el.repeat > 1 ? `x${el.repeat}` : ''
+    return { initial, rSuffix }
+  })
+}
+
+const COVER_FLOW_H = 18
 const COVER_COMMENT_LINE_H = 16
 const COVER_MAX_COMMENT_LINES = 3
 
@@ -36,13 +46,15 @@ function layoutCoverRows(songs, formElements, listTop, listBottom) {
   let i = 0
   for (; i < songs.length; i++) {
     const song = songs[i]
+    const flowItems = getFlowItems(song.form_flow, formElements)
     const comment = song.comment?.trim() || ''
     const commentLines = comment ? splitCommentLines(comment, COVER_MAX_COMMENT_LINES) : []
+    const flowH = flowItems.length > 0 ? COVER_FLOW_H : 0
     const commentH = commentLines.length * COVER_COMMENT_LINE_H
-    const subH = commentH
+    const subH = flowH + commentH
     const h = TITLE_H + subH
     if (rows.length > 0 && cursor + h > listBottom) break
-    rows.push({ song, index: i, top: cursor, titleH: TITLE_H, subH, commentLines })
+    rows.push({ song, index: i, top: cursor, titleH: TITLE_H, subH, flowItems, commentLines })
     cursor += h + ROW_GAP
   }
   return { rows, overflowCount: songs.length - rows.length, listEnd: cursor }
@@ -122,6 +134,20 @@ function CoverSlide({ categoryName, dateStr, leaderStr, season, songs, formEleme
               position: 'absolute', left: 85, right: 40, top: row.top + row.titleH, height: row.subH,
               display: 'flex', flexDirection: 'column', fontSize: 12,
             }}>
+              {row.flowItems.length > 0 && (
+                <div style={{
+                  height: COVER_FLOW_H, display: 'flex', alignItems: 'center',
+                  overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
+                  color: '#DC2626', fontWeight: 'bold',
+                }}>
+                  {row.flowItems.map((item, fi) => (
+                    <span key={fi}>
+                      {fi > 0 && ' → '}
+                      {item.initial}{item.rSuffix}
+                    </span>
+                  ))}
+                </div>
+              )}
               {row.commentLines.map((line, li) => (
                 <div key={li} style={{
                   height: COVER_COMMENT_LINE_H, display: 'flex', alignItems: 'center',
@@ -150,12 +176,16 @@ function CoverSlide({ categoryName, dateStr, leaderStr, season, songs, formEleme
 }
 
 function SongSlide({ song, index, pageIdx = 0, sheetUrl, formElements }) {
-  // 악보 위에 직접 배치한 송폼 요소
+  // 악보 위에 직접 배치한 송폼 요소가 있으면 상단 흐름 대신 사용
   const allMarks = getSheetMarks(song)
   const pageMarks = marksOfPage(allMarks, pageIdx)
+  const flowItems = getFlowItems(song.form_flow, formElements)
 
   // 상단 번호 뱃지 위치/크기 (px, BH=1000 기준)
   const BADGE_X = 10, BADGE_Y = 5, BADGE_W = 50, BADGE_H = 50
+
+  // 송폼 흐름 아이콘 시작 위치 (뱃지 우측)
+  const FLOW_START_X = 70, FLOW_Y = 5
 
   // 코멘트 영역: PPT 12pt 기준 환산 (12 / 72 × 100 ≈ 17px)
   // BH=1000px = 10인치이므로 1인치 = 100px, 1pt = 100/72px
@@ -183,6 +213,21 @@ function SongSlide({ song, index, pageIdx = 0, sheetUrl, formElements }) {
       <div style={{ position: 'absolute', left: BADGE_X, top: BADGE_Y, width: BADGE_W, height: BADGE_H, background: 'transparent', border: '2px solid #4B5563', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
         <span style={{ fontSize: 20, fontWeight: 'bold', color: '#000000' }}>{index + 1}</span>
       </div>
+
+      {/* 송폼 흐름 아이콘: 뱃지 우측, 최대 2행
+          PPT pt → 미리보기 px 환산: pt × (100 / 72)
+          메인 16pt→22px / rSuffix 12pt→17px / 화살표 13pt→18px */}
+      {flowItems.length > 0 && (
+        <div style={{ position: 'absolute', left: FLOW_START_X, top: FLOW_Y, right: 10, maxHeight: BADGE_H * 2 + 6, overflow: 'hidden', display: 'flex', flexWrap: 'wrap', alignItems: 'center', alignContent: 'center', rowGap: '2px', zIndex: 1 }}>
+          {flowItems.map((item, fi) => (
+            <span key={fi} style={{ display: 'inline-block', whiteSpace: 'nowrap', fontSize: 22, fontWeight: 'bold', color: '#DC2626', lineHeight: 1.2, verticalAlign: 'middle' }}>
+              {fi > 0 && <span style={{ fontSize: 18, margin: '0 2px' }}>→</span>}
+              {item.initial}
+              {item.rSuffix && <span style={{ fontSize: 17 }}>{item.rSuffix}</span>}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* 악보 위에 배치된 송폼 요소 */}
       {pageMarks.map(m => {

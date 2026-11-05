@@ -11,6 +11,7 @@ import api from '../api/client'
 import { useSettingsStore } from '../store/settingsStore'
 import { useAuthStore } from '../store/authStore'
 import SongCard from '../components/worshipForm/SongCard'
+import FormElementPalette, { usePaletteDock } from '../components/worshipForm/PaletteDock'
 import SongImportModal from '../components/worshipForm/SongImportModal'
 import { getSheetUrls } from '../lib/sheetUrls'
 import { getSheetMarks } from '../lib/sheetMarks'
@@ -122,6 +123,7 @@ export default function WorshipFormPage() {
   const [savedFormId, setSavedFormId] = useState(null)
   const [leaderIds, setLeaderIds] = useState([])      // 선택된 인도자 ID 배열
   const [members, setMembers] = useState([])           // 전체 회원 목록
+  const [paletteDock, setPaletteDock] = usePaletteDock()  // 송폼 요소 툴바 위치/접힘
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -606,6 +608,7 @@ export default function WorshipFormPage() {
       </div>
 
       {/* 송폼 요소 툴바 (드래그하여 송폼 흐름에 추가) */}
+      <FormElementPalette dock={paletteDock} setDock={setPaletteDock} />
     </div>
   )
 }

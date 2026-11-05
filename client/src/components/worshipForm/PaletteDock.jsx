@@ -4,18 +4,11 @@ import { useSettingsStore } from '../../store/settingsStore'
 import { PALETTE_MIME } from './FormFlowBuilder'
 
 const STORAGE_KEY = 'songform-palette-dock'
-const WIDTH = 192          // 펼친 너비 (w-48)
+const WIDTH_FLOOR = 110    // 최소 너비의 하한
 const WIDTH_COLLAPSED = 40 // 접힌 너비 (w-10)
-const SNAP = 48            // 화면 가장자리에서 이 거리 안에 놓으면 자석처럼 붙음
+const SNAP = 64            // 화면 가장자리에서 이 거리 안에 놓으면 자석처럼 붙음 (송폼 설정 편집기와 동일)
 
 const DEFAULT_DOCK = { mode: 'right', x: 0, y: 96, collapsed: false } // mode: left | right | float
-
-// 도킹 상태에 따라 본문에 확보할 여백 (lg 이상에서만 툴바 표시)
-export function dockPaddingClass(dock) {
-  if (dock.mode === 'left') return dock.collapsed ? 'lg:pl-10' : 'lg:pl-48'
-  if (dock.mode === 'right') return dock.collapsed ? 'lg:pr-10' : 'lg:pr-48'
-  return ''
-}
 
 export function usePaletteDock() {
   const [dock, setDockState] = useState(() => {
@@ -70,8 +63,24 @@ export default function FormElementPalette({ dock, setDock }) {
   const grab = useRef({ dx: 0, dy: 0 })
   const [drag, setDrag] = useState(null) // 이동 중 좌표 {x, y}
   const bounds = useMainBounds()
+  const measureFullRef = useRef(null)
+  const measureNameRef = useRef(null)
+  const [limits, setLimits] = useState({ min: WIDTH_FLOOR, max: 192 })
+  const [resizing, setResizing] = useState(false)
 
-  const width = dock.collapsed ? WIDTH_COLLAPSED : WIDTH
+  // 너비 범위 측정: 최소 = 이니셜(이름)까지, 최대 = 버튼 내용이 모두 보이는 폭
+  useEffect(() => {
+    const widest = (el) => Math.max(0, ...Array.from(el?.children || []).map(c => c.offsetWidth))
+    const extra = 16 + 8 + 2   // 패딩 + 스크롤바 여유 + 테두리
+    const min = Math.max(WIDTH_FLOOR, Math.ceil(widest(measureNameRef.current)) + extra)
+    const max = Math.max(min, Math.ceil(widest(measureFullRef.current)) + extra)
+    setLimits({ min, max })
+  }, [formElements])
+
+  const width = dock.collapsed
+    ? WIDTH_COLLAPSED
+    : Math.min(limits.max, Math.max(limits.min, dock.width || limits.max))
+
 
   const onPointerDown = (e) => {
     if (e.button !== 0) return
@@ -131,16 +140,44 @@ export default function FormElementPalette({ dock, setDock }) {
       {/* 도킹 가이드 */}
       {drag && (
         <>
-          <div style={{ left: bounds.left }} className={`hidden lg:block fixed inset-y-0 w-12 z-40 pointer-events-none border-r-2 transition-colors ${nearLeft ? 'bg-blue-500/20 border-blue-500' : 'border-transparent'}`} />
-          <div style={{ left: bounds.right - SNAP }} className={`hidden lg:block fixed inset-y-0 w-12 z-40 pointer-events-none border-l-2 transition-colors ${nearRight ? 'bg-blue-500/20 border-blue-500' : 'border-transparent'}`} />
+          <div style={{ left: bounds.left, width: SNAP }} className={`hidden lg:block fixed inset-y-0 z-40 pointer-events-none border-r-2 transition-colors ${nearLeft ? 'bg-blue-500/20 border-blue-500' : 'border-transparent'}`} />
+          <div style={{ left: bounds.right - SNAP, width: SNAP }} className={`hidden lg:block fixed inset-y-0 z-40 pointer-events-none border-l-2 transition-colors ${nearRight ? 'bg-blue-500/20 border-blue-500' : 'border-transparent'}`} />
         </>
       )}
 
       <div
         ref={panelRef}
-        className="hidden lg:block fixed z-50 bg-gray-900 border border-gray-800 shadow-xl rounded-xl select-none"
+        className="hidden lg:block fixed z-50 bg-gray-900 border border-gray-800 shadow-xl rounded-xl select-none overflow-hidden"
         style={{ ...pos, width }}
       >
+        {/* 너비 조절 핸들 */}
+        {!dock.collapsed && (
+          <div
+            className={`absolute inset-y-0 w-1.5 z-10 cursor-col-resize touch-none hover:bg-blue-500/40 ${resizing ? 'bg-blue-500/50' : ''} ${dock.mode === 'right' ? 'left-0' : 'right-0'}`}
+            title="좌우로 끌어서 너비 조절"
+            onPointerDown={(e) => { if (e.button !== 0) return; e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); setResizing(true) }}
+            onPointerMove={(e) => {
+              if (!resizing) return
+              const r = panelRef.current.getBoundingClientRect()
+              const w = dock.mode === 'right' ? r.right - e.clientX : e.clientX - r.left
+              setDock(d => ({ ...d, width: Math.round(Math.min(limits.max, Math.max(limits.min, w))) }))
+            }}
+            onPointerUp={() => setResizing(false)}
+            onPointerCancel={() => setResizing(false)}
+          />
+        )}
+
+        {/* 너비 범위 측정용 (화면에 보이지 않음) */}
+        {[['full', measureFullRef], ['name', measureNameRef]].map(([mode, ref]) => (
+          <div key={mode} ref={ref} aria-hidden className="absolute invisible pointer-events-none flex flex-col" style={{ left: 0, top: 0 }}>
+            {formElements.map(el => (
+              <div key={el.id} className="flex items-center gap-1.5 px-2 py-1.5 border text-xs font-medium whitespace-nowrap w-max">
+                <span>{el.name}</span>{mode === 'full' && el.name_ko && <span>({el.name_ko})</span>}
+              </div>
+            ))}
+          </div>
+        ))}
+
         {/* 헤더: 잡고 끌어서 이동 */}
         <div
           className={`flex items-center gap-1 px-1.5 py-1.5 touch-none ${drag ? 'cursor-grabbing' : 'cursor-grab'} ${dock.collapsed ? 'flex-col' : 'border-b border-gray-800 justify-between'}`}
@@ -173,11 +210,11 @@ export default function FormElementPalette({ dock, setDock }) {
                     e.dataTransfer.setData(PALETTE_MIME, JSON.stringify(el))
                     e.dataTransfer.setData('text/plain', el.name)
                   }}
-                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium border cursor-grab active:cursor-grabbing transition-transform hover:scale-[1.03]"
+                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium border whitespace-nowrap overflow-hidden cursor-grab active:cursor-grabbing transition-transform hover:scale-[1.03]"
                   style={{ backgroundColor: el.color + '22', borderColor: el.color + '88', color: el.color }}
                 >
-                  <span className="truncate">{el.name}</span>
-                  {el.name_ko && <span className="opacity-70 truncate">({el.name_ko})</span>}
+                  <span className="shrink-0">{el.name}</span>
+                  {el.name_ko && <span className="opacity-70 truncate min-w-0">({el.name_ko})</span>}
                 </div>
               ))}
               {formElements.length === 0 && (

@@ -57,7 +57,8 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
   }, [formElements])
   const [resizing, setResizing] = useState(false)
 
-  const [dockDrag, setDockDrag] = useState(null)   // 도크 이동 중 포인터 x 좌표
+  const [dockDrag, setDockDrag] = useState(null)   // 팔레트 이동 중 {x, y(편집기 기준 좌상단), cx(포인터 x)}
+  const grabRef = useRef({ dx: 0, dy: 0 })
 
   // 메인 영역(LNB 오른쪽) 좌표를 따라가는 오버레이 영역
   const [area, setArea] = useState(() => measureMain())
@@ -71,13 +72,13 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
     return () => { window.removeEventListener('resize', update); ro?.disconnect() }
   }, [])
 
-  // 테두리 근처(SNAP px 이내)에 놓았을 때만 그쪽으로 도킹, 그 외에는 현재 위치 유지
-  const SNAP = 120
-  const snapSide = (clientX) => {
+  // 팔레트 가장자리가 편집기 테두리 SNAP px 이내로 오면 그쪽으로 도킹, 그 외에는 현재 위치 유지
+  const SNAP = 64
+  const snapSide = (panelX) => {
     const r = rootRef.current?.getBoundingClientRect()
     if (!r) return null
-    if (clientX <= r.left + SNAP) return 'left'
-    if (clientX >= r.right - SNAP) return 'right'
+    if (panelX <= SNAP) return 'left'
+    if (panelX + dockW >= r.width - SNAP) return 'right'
     return null
   }
 
@@ -152,12 +153,17 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
   const dockW = dock.collapsed ? DOCK_W_COLLAPSED : Math.min(limits.max, Math.max(limits.min, dock.width || limits.max))
   // 접기 아이콘: 도크가 붙은 쪽으로 접히는 방향
   const CollapseIcon = (dock.side === 'left') === !dock.collapsed ? ChevronsLeft : ChevronsRight
-  const dropSide = dockDrag !== null ? snapSide(dockDrag) : null
+  const dropSide = dockDrag !== null ? snapSide(dockDrag.x) : null
 
   const dockPanel = (
     <div
-      className="relative flex-none flex flex-col bg-gray-900 select-none"
-      style={{ width: dockW, [dock.side === 'left' ? 'borderRight' : 'borderLeft']: '1px solid #1f2937' }}
+      className="absolute z-30 flex flex-col bg-gray-900 border border-gray-800 shadow-xl rounded-xl overflow-hidden select-none"
+      style={{
+        width: dockW,
+        maxHeight: 'calc(100% - 24px)',
+        top: dockDrag ? dockDrag.y : (dock.y ?? 12),
+        ...(dockDrag ? { left: dockDrag.x } : dock.side === 'left' ? { left: 0 } : { right: 0 }),
+      }}
     >
       {/* 너비 조절 핸들 (캔버스와 맞닿은 쪽 가장자리) */}
       {!dock.collapsed && (
@@ -189,13 +195,29 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
 
       {/* 헤더: 잡고 끌어서 좌/우로 이동 */}
       <div
-        className={`flex items-center gap-1 px-1.5 py-2 touch-none border-b border-gray-800 ${dockDrag !== null ? 'cursor-grabbing' : 'cursor-grab'} ${dock.collapsed ? 'flex-col' : 'justify-between'}`}
-        title="끌어서 좌/우 이동"
-        onPointerDown={(e) => { if (e.button !== 0) return; e.currentTarget.setPointerCapture(e.pointerId); setDockDrag(e.clientX) }}
-        onPointerMove={(e) => { if (dockDrag !== null) setDockDrag(e.clientX) }}
+        className={`flex items-center gap-1 px-1.5 py-2 touch-none border-b border-gray-800 ${dockDrag ? 'cursor-grabbing' : 'cursor-grab'} ${dock.collapsed ? 'flex-col' : 'justify-between'}`}
+        title="끌어서 위치 이동 (좌/우 끝에 놓으면 붙습니다)"
+        onPointerDown={(e) => {
+          if (e.button !== 0) return
+          const pr = e.currentTarget.parentElement.getBoundingClientRect()
+          const rr = rootRef.current.getBoundingClientRect()
+          grabRef.current = { dx: e.clientX - pr.left, dy: e.clientY - pr.top }
+          e.currentTarget.setPointerCapture(e.pointerId)
+          setDockDrag({ x: pr.left - rr.left, y: pr.top - rr.top, cx: e.clientX })
+        }}
+        onPointerMove={(e) => {
+          if (!dockDrag) return
+          const rr = rootRef.current.getBoundingClientRect()
+          setDockDrag({
+            x: Math.max(0, Math.min(rr.width - dockW, e.clientX - grabRef.current.dx - rr.left)),
+            y: Math.max(0, Math.min(rr.height - 48, e.clientY - grabRef.current.dy - rr.top)),
+            cx: e.clientX,
+          })
+        }}
         onPointerUp={(e) => {
-          if (dockDrag === null) return
-          { const side = snapSide(e.clientX); if (side) setDock({ side }) }
+          if (!dockDrag) return
+          const side = snapSide(dockDrag.x)
+          setDock({ y: Math.round(dockDrag.y), ...(side ? { side } : {}) })
           setDockDrag(null)
         }}
         onPointerCancel={() => setDockDrag(null)}
@@ -239,22 +261,6 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
             </div>
           </div>
 
-          {/* 선택한 요소 설정 */}
-          {sel && (
-            <div className="pt-2 border-t border-gray-800 space-y-2 text-xs text-gray-300">
-              <div className="font-bold" style={{ color: sel.color }}>선택: {sel.name}</div>
-              <label className="flex items-center gap-1">반복 ×
-                <input
-                  type="number" min="1" max="9" value={sel.repeat || 1}
-                  onChange={e => updateSelected({ repeat: Math.min(9, Math.max(1, parseInt(e.target.value) || 1)) })}
-                  className="w-12 text-center bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-gray-200"
-                />
-              </label>
-              <button type="button" className="flex items-center gap-1 text-gray-400 hover:text-red-400" onClick={removeSelected}>
-                <Trash2 size={13} /> 삭제
-              </button>
-            </div>
-          )}
         </div>
       ) : <div className="flex-1" />}
 
@@ -273,17 +279,16 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
   return createPortal(
     <div
       ref={rootRef}
-      className="fixed z-40 flex overflow-hidden bg-[#F1F5F9] dark:bg-gray-950"
+      className="fixed z-[60] flex overflow-hidden bg-[#F1F5F9] dark:bg-gray-950"
       style={{ left: area.left, top: area.top, width: area.width, height: area.height }}
     >
-      {dockDrag !== null && ['left', 'right'].map(side => (
+      {dockDrag && ['left', 'right'].map(side => (
         <div
           key={side}
           style={{ width: SNAP }}
           className={`absolute inset-y-0 z-20 pointer-events-none transition-colors ${side === 'left' ? 'left-0 border-r-2' : 'right-0 border-l-2'} ${dropSide === side ? 'bg-blue-500/25 border-blue-500' : 'border-transparent'}`}
         />
       ))}
-      {dock.side === 'left' && dockPanel}
 
       {/* 악보 캔버스: 세로 한 장이 모두 보이도록 높이에 맞춤 */}
       <div ref={bodyRef} className="flex-1 min-w-0 flex items-center justify-center overflow-hidden relative">
@@ -322,7 +327,29 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
         </div>
       </div>
 
-      {dock.side === 'right' && dockPanel}
+      {dockPanel}
+      {/* 선택한 요소 서브 툴바: 팔레트 상단 옆(캔버스 쪽)에 붙어서 표시 */}
+      {sel && !dockDrag && (
+        <div
+          className={`absolute z-30 flex flex-col items-start gap-2 px-3 py-2 bg-gray-900 border border-gray-800 shadow-xl text-xs text-gray-300 select-none ${dock.side === 'left' ? 'rounded-r-xl border-l-0' : 'rounded-l-xl border-r-0'}`}
+          style={{
+            top: dock.y ?? 12,
+            [dock.side === 'left' ? 'left' : 'right']: dockW,
+          }}
+        >
+          <span className="font-bold whitespace-nowrap" style={{ color: sel.color }}>선택: {sel.name}</span>
+          <label className="flex items-center gap-1 whitespace-nowrap">반복 ×
+            <input
+              type="number" min="1" max="9" value={sel.repeat || 1}
+              onChange={e => updateSelected({ repeat: Math.min(9, Math.max(1, parseInt(e.target.value) || 1)) })}
+              className="w-12 text-center bg-gray-800 border border-gray-700 rounded px-1 py-0.5 text-gray-200"
+            />
+          </label>
+          <button type="button" className="flex items-center gap-1 whitespace-nowrap text-gray-400 hover:text-red-400" onClick={removeSelected}>
+            <Trash2 size={13} /> 삭제
+          </button>
+        </div>
+      )}
     </div>,
     document.body
   )
