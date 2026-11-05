@@ -3,7 +3,6 @@ import { GripVertical, Trash2, Copy, Music, Search, ChevronDown, ChevronUp, Drum
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import KeySelector from './KeySelector'
-import FormFlowBuilder from './FormFlowBuilder'
 import SheetMusicModal from './SheetMusicModal'
 import SheetMarkEditor from './SheetMarkEditor'
 import api from '../../api/client'
@@ -193,14 +192,6 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
             value={song.performance_key || 'C'}
             semitone={song.semitone_adjustment || 0}
             onChange={handleKeyChange}
-          />
-
-          {/* 송폼 흐름 빌더 */}
-          <FormFlowBuilder
-            flow={song.form_flow || []}
-            onChange={(flow) => onUpdate({ form_flow: flow })}
-            enablePreset
-            sidePalette
           />
 
           {/* 연주 정보 */}
