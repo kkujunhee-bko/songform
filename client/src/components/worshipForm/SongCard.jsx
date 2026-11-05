@@ -6,13 +6,16 @@ import KeySelector from './KeySelector'
 import FormFlowBuilder from './FormFlowBuilder'
 import SheetMusicModal from './SheetMusicModal'
 import SheetMarkEditor from './SheetMarkEditor'
+import SheetViewer from './SheetViewer'
 import api from '../../api/client'
 import { getSheetUrls, sheetPatch } from '../../lib/sheetUrls'
 import { getSheetMarks, marksOfPage } from '../../lib/sheetMarks'
+import { onSheetError } from '../../lib/sheetFallback'
 
 export default function SongCard({ song, index, total = 20, onUpdate, onRemove, onDuplicate }) {
   const [expanded, setExpanded] = useState(true)
   const [showSheetMusic, setShowSheetMusic] = useState(false)
+  const [viewUrl, setViewUrl] = useState(null)   // 악보 크게 보기
   const [markPage, setMarkPage] = useState(null)   // 송폼 배치 편집 중인 악보 장 인덱스
   const [titleSuggestions, setTitleSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -313,13 +316,14 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
                 {sheetUrls.map((url, i) => (
                   <div key={`${url}-${i}`} className="relative group">
                     <div className="relative">
-                      <a href={url} target="_blank" rel="noopener noreferrer" className="block">
+                      <button type="button" className="block cursor-zoom-in" onClick={() => setViewUrl(url)} title="크게 보기">
                         <img
                           src={url}
                           alt={`악보 ${i + 1}`}
+                          onError={onSheetError}
                           className="max-h-56 w-auto rounded-lg border border-gray-700 hover:border-blue-500 transition-colors object-contain bg-gray-800"
                         />
-                      </a>
+                      </button>
                       {/* 배치된 송폼 요소 미리보기 */}
                       {marksOfPage(sheetMarks, i).map(m => (
                         <span
@@ -380,6 +384,8 @@ export default function SongCard({ song, index, total = 20, onUpdate, onRemove, 
           )}
         </div>
       )}
+
+      {viewUrl && <SheetViewer url={viewUrl} title={song.song_title} onClose={() => setViewUrl(null)} />}
 
       {/* 악보 검색 모달 */}
       {showSheetMusic && (

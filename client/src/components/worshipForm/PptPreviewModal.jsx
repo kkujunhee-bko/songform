@@ -4,6 +4,7 @@ import { X, ChevronLeft, ChevronRight, Eye, FileDown, Loader, Share2, Check } fr
 import { getSheetUrls } from '../../lib/sheetUrls'
 import { getSheetMarks, marksOfPage } from '../../lib/sheetMarks'
 import { useSettingsStore } from '../../store/settingsStore'
+import { onSheetError } from '../../lib/sheetFallback'
 
 const BW = 750
 const BH = 1000
@@ -202,7 +203,7 @@ function SongSlide({ song, index, pageIdx = 0, sheetUrl, formElements }) {
       {/* 악보 이미지: 슬라이드 전체를 이미지 영역으로 사용, contain으로 비율 유지
           → PPT 출력과 동일하게 여백은 이미지 자체 비율에서 자연 발생 */}
       {sheetUrl ? (
-        <img src={sheetUrl} alt="악보" style={{ position: 'absolute', left: '2.5%', top: '2.5%', width: '95%', height: '95%', objectFit: 'contain' }} />
+        <img src={sheetUrl} alt="악보" onError={onSheetError} style={{ position: 'absolute', left: '2.5%', top: '2.5%', width: '95%', height: '95%', objectFit: 'contain' }} />
       ) : (
         <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, color: '#CBD5E1', fontStyle: 'italic' }}>
           악보가 첨부되지 않았습니다.

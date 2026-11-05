@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Check, Trash2, GripVertical, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import { useSettingsStore } from '../../store/settingsStore'
+import { onSheetError } from '../../lib/sheetFallback'
 
 const BW = 750
 const BH = 1000
@@ -301,7 +302,7 @@ export default function SheetMarkEditor({ sheetUrl, page, pageCount, marks, onSa
             onPointerDown={() => setSelected(null)}
           >
             <img
-              src={sheetUrl} alt="악보" draggable={false}
+              src={sheetUrl} alt="악보" draggable={false} onError={onSheetError}
               style={{ position: 'absolute', left: '2.5%', top: '2.5%', width: '95%', height: '95%', objectFit: 'contain', pointerEvents: 'none', userSelect: 'none' }}
             />
             {pageMarks.map(m => (
