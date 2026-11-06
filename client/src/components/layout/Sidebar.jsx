@@ -76,7 +76,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
           {/* 텍스트: 모바일 항상 표시, 태블릿 숨김, PC 표시 */}
           <div className="md:hidden lg:block">
             <div className="text-sm font-bold text-white">SongForm</div>
-            <div className="text-xs text-gray-500">예배 송폼 관리</div>
+            <div className="text-xs text-gray-500">예배 찬양 송폼 관리</div>
           </div>
         </div>
 

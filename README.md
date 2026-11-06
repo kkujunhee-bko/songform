@@ -1,4 +1,4 @@
-# SongForm - 엘리아다 예배 송폼 관리 시스템
+# SongForm - 엘리아다 예배 찬양 송폼 관리 시스템
 
 찬양팀을 위한 예배 찬양 송폼 관리 및 PPT 내보내기 웹 애플리케이션.
 
@@ -94,7 +94,7 @@ npm run dev
 | GET /api/worship-categories | 예배 카테고리 |
 | GET /api/song-form-elements | 송폼 요소 목록 |
 | GET /api/songs?q= | 노래 검색 |
-| GET/POST /api/worship-forms | 예배 송폼 목록/생성 |
+| GET/POST /api/worship-forms | 예배 찬양 송폼 목록/생성 |
 | GET/PUT /api/worship-forms/:id | 송폼 조회/수정 |
 | GET /api/liturgical-seasons/current?date= | 현재 절기 조회 |
 | POST /api/export/pptx/:formId | PPT 다운로드 |

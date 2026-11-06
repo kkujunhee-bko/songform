@@ -377,7 +377,7 @@ export default function WorshipFormPage() {
             <ArrowLeft size={18} />
           </button>
           <h1 className="text-xl sm:text-2xl font-bold text-white truncate flex-1">
-            {isEdit ? '예배 송폼 편집' : '새 예배 송폼'}
+            {isEdit ? '찬양 송폼 편집' : '찬양 송폼 등록'}
           </h1>
           <div className="flex items-center gap-2 shrink-0">
             <button

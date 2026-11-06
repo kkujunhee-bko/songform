@@ -251,7 +251,7 @@ export default function WorshipFormListPage() {
       {/* 헤더 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">예배 송폼 목록</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">예배 찬양 송폼 목록</h1>
           <p className="text-sm text-gray-500 mt-1">
             총 {forms.length}개
             {hasFilters && ` · 검색결과 ${filteredForms.length}개`}
